@@ -109,7 +109,7 @@ def _cover(wb):
         ("cv_Comments", "Comments", "Any assumptions you want the planning team to know about."),
     ]
     r = 5
-    dv_force = DataValidation(type="list", formula1="=lst_Forces", allow_blank=False,
+    dv_force = DataValidation(type="list", formula1="lst_Forces", allow_blank=False,
                               showErrorMessage=True, errorTitle="Force",
                               error="Choose a force from the list.")
     dv_date = DataValidation(type="date", operator="between", formula1="DATE(2026,1,1)",
@@ -324,14 +324,14 @@ def _collection(wb, coll):
     dv_hrs = DataValidation(type="decimal", operator="between", formula1="0", formula2="24",
                             showErrorMessage=True, errorTitle="Hours",
                             error="Enter hours between 0 and 24, or leave blank.")
-    dv_status = DataValidation(type="list", formula1="=lst_SectionStatus", showErrorMessage=True)
-    dv_supply = DataValidation(type="list", formula1="=lst_Supply", showErrorMessage=True)
-    dv_opt = DataValidation(type="list", formula1="=lst_WTOptions", showErrorMessage=True)
+    dv_status = DataValidation(type="list", formula1="lst_SectionStatus", showErrorMessage=True)
+    dv_supply = DataValidation(type="list", formula1="lst_Supply", showErrorMessage=True)
+    dv_opt = DataValidation(type="list", formula1="lst_WTOptions", showErrorMessage=True)
     dv_lists = {}
 
     def dv_list(name):
         if name not in dv_lists:
-            dv_lists[name] = DataValidation(type="list", formula1=f"=lst_{name}", showErrorMessage=True,
+            dv_lists[name] = DataValidation(type="list", formula1=f"lst_{name}", showErrorMessage=True,
                                             error="Choose a value from the list.")
         return dv_lists[name]
 
@@ -564,7 +564,7 @@ def _optional_tables(wb):
         t.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
         ws.add_table(t)
         rank_col = cols.index("Rank") + 1
-        dv = DataValidation(type="list", formula1="=lst_Ranks_All", showErrorMessage=True)
+        dv = DataValidation(type="list", formula1="lst_Ranks_All", showErrorMessage=True)
         dv.add(f"{L(rank_col)}5:{L(rank_col)}{4 + n}")
         ws.add_data_validation(dv)
         for h in ("Number (FTE)", "Hours FY 2027-28", "Hours FY 2028-29"):
@@ -585,7 +585,7 @@ def _optional_tables(wb):
                 for rr in range(5, 5 + n):
                     ws.cell(rr, ci).number_format = "mmm-yyyy"
         if "Supply" in cols:
-            dvs = DataValidation(type="list", formula1="=lst_Supply", showErrorMessage=True)
+            dvs = DataValidation(type="list", formula1="lst_Supply", showErrorMessage=True)
             ci = cols.index("Supply") + 1
             dvs.add(f"{L(ci)}5:{L(ci)}{4 + n}")
             ws.add_data_validation(dvs)
