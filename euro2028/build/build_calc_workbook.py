@@ -14,7 +14,7 @@ logic (Decision D-12) implemented as uniform, generated formulas:
   Output    MD Demand Template, MD Cost Template, WT Cost Template, Fleet,
             Command Team & Planning, Other Resources, Summary.
 
-Legacy rules carried exactly (see docs/02_calculation_spec.md section 5):
+Legacy rules carried exactly (see docs/02_calculation_rules.md):
   * day selection per date and risk level: STD MD > MD-1 > MD-2 > MD+1,
     NONMD MD-1 > MD-2 > MD+1, MDONLY MD; risk levels summed;
   * cost = officers x Extra Hours x rate (Normal ToD not costed);

@@ -33,6 +33,7 @@ and cross-checked references. The original workbook was not modified.
 | C3 | MD+1 rule inconsistent: on 13/16/19 June, rows 7–17, MD+1 is **added and PSUs halved**; elsewhere MD+1 is exclusive and not halved. | 99 cells `Demand Sheet!AB7:AD17, AN, AZ` | D-02: add both; no halving (parameter `MD1_PSU_Factor` = 1). |
 | C4 | Overlapping relative days: the IF chain keeps only the first match (MD > MD-1 > MD-2 > MD+1), dropping demand. | All Demand / Cost formulas | D-02: demands are added. |
 | C5 | Copy errors: `Cost Sheet!BS8:BS15` test `BP5…BP12` instead of row 4 and use the Inspector rate `$N$7`; `Cost Sheet!D40:F48` reference wrong Cost Calculator rows. | Cell level | Eliminated (no cell-by-cell formulas). |
+| C7 | MD+1 branch missing from the IF chain in 12 cells of one date column (rows 7–15 and 105). | Demand Sheet | Eliminated (generated formulas). |
 | C6 | Additional Resources priced at a fixed rate regardless of role (MD: MA Sergeant; WT: arbitrary mix). | `Cost Calculator` rows 269–277, 366–381 | D-07: priced by the selected rank. |
 
 ### Costing assumptions (resolved with the project team)
@@ -58,6 +59,9 @@ and cross-checked references. The original workbook was not modified.
 Verified clean: Demand rows reference the correct survey rows across all 102
 date columns; scenario columns are consistent; all 215 Cost Sheet rows map to
 label-matching Cost Calculator rows except the C5 cells.
+
+Re-keying the legacy return into the new model reproduces 12,648 legacy Demand / Cost Sheet cells
+exactly, apart from the C3 dates – see `04_validation.md`.
 
 ## 3. Legacy output baselines (cached values)
 

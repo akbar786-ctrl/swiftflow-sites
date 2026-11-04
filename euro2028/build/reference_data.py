@@ -114,7 +114,7 @@ PARAMETERS = [
     # name, value, type, description, source
     ("RuleSet", "LEGACY", "text",
      "LEGACY reproduces the old workbook's calculation logic (selected by the project team). AGREED applies "
-     "the revised rules D-02, D-03, D-05, D-06, D-07. See docs/02_calculation_spec.md section 5.", "Decision D-12"),
+     "the revised rules D-02, D-03, D-05, D-06, D-07. See docs/02_calculation_rules.md.", "Decision D-12"),
     ("OtherResourcesRateDate2728", dt.date(2027, 6, 1), "date",
      "Rate month for Other Resources FY 2027-28 hours.", "Legacy Other Resources!E7 used Baseline Costs column L (Jun-2027)."),
     ("RateEffectiveDate", dt.date(2028, 6, 1), "date",
