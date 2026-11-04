@@ -23,6 +23,7 @@ in
 //   RefUpliftStep     = fnRef("RefUpliftStep")          no load
 //   RefZeroCost       = fnRef("RefZeroCost")            no load
 //   RefMAPackage      = fnRef("RefMAPackage")           no load
+//   RefAnnualCost     = fnRef("RefAnnualCost")          no load
 //   MapOldToNew       = fnRef("MapOldToNew")            load
 //   LogDecision       = fnRef("LogDecision")            load
 //   LogOpenItem       = fnRef("LogOpenItem")            load

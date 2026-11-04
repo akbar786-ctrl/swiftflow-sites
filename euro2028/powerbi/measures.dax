@@ -1,78 +1,38 @@
 // ============================================================================
-// EURO 2028 - DAX measures (create in a dedicated "_Measures" table)
-// Model relationships are listed in docs/03_data_model.md.
-//
-// Rule of thumb used throughout:
-//   Power Query  = shape, clean, validate, expand PSUs, attach keys/rates
-//   DAX          = anything that must respond to slicers (risk, day, force,
-//                  portfolio, skill, supply, scenario) - quantities and costs
+// EURO 2028 - DAX measures. Create a table "_Measures" and add each measure.
+// Relationships: docs/03_data_model.md.  Rules: RefParameter[RuleSet]
+// (LEGACY by default = identical to the backup calculation workbook).
+// Costs are calculated per row in Power Query (FactDeployed, FactMAPackage,
+// FactCalendar); measures aggregate them so every slicer works.
 // ============================================================================
 
 // ---------------------------------------------------------------- Quantities
-Officers =
-    SUM ( FactDeployed[Officers] )
-
-Officer Hours =
-    SUM ( FactDeployed[ToDHours] ) + SUM ( FactDeployed[XHHours] )
-
-Normal ToD Hours =
-    SUM ( FactDeployed[ToDHours] )
-
-Extra Hours =
-    SUM ( FactDeployed[XHHours] )
-
-PSU Units (Force Supplied) =
-    CALCULATE ( SUM ( FactInput[NUM] ), FactInput[RowType] = "PSU_COUNT" )
-
-PSU Units (Mutual Aid) =
-    CALCULATE ( SUM ( FactInput[NUM] ), FactInput[RowType] = "MA_PSU" )
-
-MA Packages =
-    SUM ( FactMAPackage[Packages] )
-
-// Peak officers across the relative days in context (per fixture view)
-Peak Day Officers =
-    MAXX ( VALUES ( DimRelativeDay[DayCode] ), [Officers] )
+Officers = SUM ( FactDeployed[Officers] )
+Officer Hours = SUM ( FactDeployed[ToDHours] ) + SUM ( FactDeployed[XHHours] )
+Normal ToD Hours = SUM ( FactDeployed[ToDHours] )
+Extra Hours = SUM ( FactDeployed[XHHours] )
+PSU Units (Force Supplied) = CALCULATE ( SUM ( FactInput[NUM] ), FactInput[RowType] = "PSU_COUNT" )
+PSU Units (Mutual Aid) = SUM ( FactMAPackage[Units] )
+MA Packages Charged = SUM ( FactMAPackage[PackagesCharged] )
+Peak Day Officers = MAXX ( VALUES ( DimRelativeDay[DayCode] ), [Officers] )
 
 // -------------------------------------------------------------------- Costs
-Normal ToD Cost =
-    SUMX ( FactDeployed, FactDeployed[ToDHours] * RELATED ( DimRate[ToDRate] ) )
+Officer Cost = SUM ( FactDeployed[Cost] )
+Normal ToD Cost = SUM ( FactDeployed[ToDCost] )
+Extra Hours Cost = SUM ( FactDeployed[XHCost] )
+MA Package Cost = SUM ( FactMAPackage[Cost] )
+Total Cost = [Officer Cost] + [MA Package Cost]
+Force Supplied Cost = CALCULATE ( [Officer Cost], FactDeployed[SupplyCode] = "FS" )
+Mutual Aid Cost = CALCULATE ( [Officer Cost], FactDeployed[SupplyCode] = "MA" ) + [MA Package Cost]
+Uncosted Officer Hours = CALCULATE ( [Officer Hours], ISBLANK ( FactDeployed[Cost] ) )
 
-Extra Hours Cost =
-    SUMX ( FactDeployed, FactDeployed[XHHours] * RELATED ( DimRate[OTRate] ) )
+// ------------------------------------------------- Match Day (per fixture)
+// Fixtures are not set (D-01): Match Day figures are PER FIXTURE at the
+// selected risk level. Slice by DimRisk and DimRelativeDay.
+MD Officers per Fixture = CALCULATE ( [Officers], DimResource[Collection] = "MD" )
+MD Cost per Fixture = CALCULATE ( [Total Cost], DimResource[Collection] = "MD" )
 
-Officer Cost =
-    [Normal ToD Cost] + [Extra Hours Cost]
-
-MA Package Cost =
-    SUM ( FactMAPackage[PackageCost] )
-
-Total Cost =
-    [Officer Cost] + [MA Package Cost]
-
-Force Supplied Cost =
-    CALCULATE ( [Officer Cost], FactDeployed[SupplyCode] = "FS" )
-
-Mutual Aid Cost =
-    CALCULATE ( [Officer Cost], FactDeployed[SupplyCode] = "MA" ) + [MA Package Cost]
-
-// Lines that could not be costed (rank / supply / rate missing) - see DataQuality
-Uncosted Officer Hours =
-    CALCULATE (
-        [Officer Hours],
-        FILTER ( FactDeployed, ISBLANK ( RELATED ( DimRate[OTRate] ) ) )
-    )
-
-// ----------------------------------------------------------- Match Day view
-// Fixtures are not yet set (D-01): MD figures are PER FIXTURE at the selected
-// risk level. Slice by DimRisk and DimRelativeDay.
-MD Cost per Fixture =
-    CALCULATE ( [Total Cost], DimResource[Collection] = "MD" )
-
-MD Officers per Fixture =
-    CALCULATE ( [Officers], DimResource[Collection] = "MD" )
-
-// Optional what-if: RefFixturePlan holds planned fixtures per host force per risk
+// What-if: RefFixturePlan = planned fixtures per host force per risk level
 MD Planned Cost =
     SUMX (
         RefFixturePlan,
@@ -84,58 +44,39 @@ MD Planned Cost =
             )
     )
 
-// ---------------------------------------------------- Wider Tournament view
-WT Daily Cost =
-    CALCULATE ( [Total Cost], DimResource[Collection] = "WT" )
-
-WT Daily Officers =
-    CALCULATE ( [Officers], DimResource[Collection] = "WT" )
-
-// National assumption: days at each risk level (DimRisk[WTDays], D-08)
+// ---------------------------------------------------- Wider Tournament
+WT Daily Officers = CALCULATE ( [Officers], DimResource[Collection] = "WT" )
+WT Daily Cost = CALCULATE ( [Total Cost], DimResource[Collection] = "WT" )
 WT Tournament Cost =
-    SUMX (
-        VALUES ( DimRisk[RiskCode] ),
-        CALCULATE ( [WT Daily Cost] ) * CALCULATE ( MAX ( DimRisk[WTDays] ) )
-    )
-
+    SUMX ( VALUES ( DimRisk[RiskCode] ), CALCULATE ( [WT Daily Cost] ) * CALCULATE ( MAX ( DimRisk[WTDays] ) ) )
 WT Tournament Officer Days =
-    SUMX (
-        VALUES ( DimRisk[RiskCode] ),
-        CALCULATE ( [WT Daily Officers] ) * CALCULATE ( MAX ( DimRisk[WTDays] ) )
-    )
+    SUMX ( VALUES ( DimRisk[RiskCode] ), CALCULATE ( [WT Daily Officers] ) * CALCULATE ( MAX ( DimRisk[WTDays] ) ) )
 
-// ------------------------------------------- Calendar view (once fixtures set)
-Calendar Officers =
-    SUM ( FactCalendar[Officers] )
-
-Calendar Cost =
-    SUMX (
-        FactCalendar,
-        FactCalendar[ToDHours] * RELATED ( DimRate[ToDRate] )
-            + FactCalendar[XHHours] * RELATED ( DimRate[OTRate] )
-    )
-
-Peak Daily Officers =
-    MAXX ( VALUES ( DimDate[Date] ), [Calendar Officers] )
-
+// ------------------------------------------- Calendar (once fixtures set)
+Calendar Officers = CALCULATE ( SUM ( FactCalendar[Officers] ), FactCalendar[Kind] = "Officer" )
+Calendar MA Units = CALCULATE ( SUM ( FactCalendar[Officers] ), FactCalendar[Kind] = "Package" )
+Calendar Cost = SUM ( FactCalendar[Cost] )
+Peak Daily Officers = MAXX ( VALUES ( DimDate[Date] ), [Calendar Officers] )
 Fixtures in Range =
     CALCULATE ( DISTINCTCOUNT ( RefFixture[FixtureID] ), USERELATIONSHIP ( RefFixture[MatchDate], DimDate[Date] ) )
 
+// --------------------------------- Command Team & Planning, Other Resources
+Command Team Cost = SUM ( FactCommandTeam[Cost] )
+Other Resources Cost = SUM ( FactOtherResources[Cost FY 2027-28] ) + SUM ( FactOtherResources[Cost FY 2028-29] )
+
+// Grand total for a force / nation: calendar MD (if fixtures set) or planned MD,
+// plus WT tournament, Command Team and Other Resources
+Grand Total Cost =
+    VAR _md = IF ( ISEMPTY ( FactCalendar ), [MD Planned Cost], [Calendar Cost] )
+    RETURN _md + [WT Tournament Cost] + [Command Team Cost] + [Other Resources Cost]
+
 // ------------------------------------------------------ Capacity and gaps
-Capacity =
-    SUM ( RefCapacity[AvailableOfficers] )
+Capacity = SUM ( RefCapacity[AvailableOfficers] )
+Demand Peak = IF ( ISEMPTY ( FactCalendar ), [Peak Day Officers], [Peak Daily Officers] )
+Capacity Gap = IF ( ISBLANK ( [Capacity] ), BLANK (), [Capacity] - [Demand Peak] )
+Capacity Utilisation % = DIVIDE ( [Demand Peak], [Capacity] )
 
-// Uses calendar peak when fixtures exist, otherwise the per-fixture peak day
-Demand Peak =
-    IF ( ISEMPTY ( FactCalendar ), [Peak Day Officers], [Peak Daily Officers] )
-
-Capacity Gap =
-    IF ( ISBLANK ( [Capacity] ), BLANK (), [Capacity] - [Demand Peak] )
-
-Capacity Utilisation % =
-    DIVIDE ( [Demand Peak], [Capacity] )
-
-// --------------------------------------------- Equipment (needs OI-05 ratios)
+// --------------------------------------------- Equipment (needs OI-05)
 // RefEquipmentRatio[Basis] = "Per officer" or "Per unit"
 Equipment Required =
     SUMX (
@@ -148,55 +89,37 @@ Equipment Required =
     )
 
 // --------------------------------------------- Scenario uplifts (needs OI-06)
-// Select one scenario in a slicer on RefScenarioUplift[Scenario].
-// UpliftType "Percent" applies to officers in matching portfolio; "Officers" adds a fixed number.
 Scenario Additional Officers =
     VAR _s = SELECTEDVALUE ( RefScenarioUplift[Scenario] )
     RETURN
-        IF (
-            ISBLANK ( _s ),
-            BLANK (),
-            SUMX (
-                FILTER ( ALL ( RefScenarioUplift ), RefScenarioUplift[Scenario] = _s ),
-                IF (
-                    RefScenarioUplift[UpliftType] = "Percent",
-                    RefScenarioUplift[Value]
-                        * CALCULATE ( [Officers], TREATAS ( { RefScenarioUplift[Portfolio] }, DimResource[Portfolio] ) ),
-                    RefScenarioUplift[Value]
-                )
-            )
-        )
-
-Officers incl. Scenario =
-    [Officers] + [Scenario Additional Officers]
+        IF ( ISBLANK ( _s ), BLANK (),
+            SUMX ( FILTER ( ALL ( RefScenarioUplift ), RefScenarioUplift[Scenario] = _s ),
+                IF ( RefScenarioUplift[UpliftType] = "Percent",
+                    RefScenarioUplift[Value] * CALCULATE ( [Officers], TREATAS ( { RefScenarioUplift[Portfolio] }, DimResource[Portfolio] ) ),
+                    RefScenarioUplift[Value] ) ) )
+Officers incl. Scenario = [Officers] + [Scenario Additional Officers]
 
 // ---------------------------------------------------------- Data quality
-DQ Errors =
-    CALCULATE ( COUNTROWS ( DataQuality ), DataQuality[Severity] = "Error" )
-
-DQ Warnings =
-    CALCULATE ( COUNTROWS ( DataQuality ), DataQuality[Severity] = "Warning" )
-
-Forces Submitted =
-    CALCULATE ( DISTINCTCOUNT ( Submissions[ForceKey] ), Submissions[IsCurrent] = TRUE () )
-
-Forces With Errors =
-    CALCULATE ( DISTINCTCOUNT ( DataQuality[ForceKey] ), DataQuality[Severity] = "Error" )
-
+DQ Errors = CALCULATE ( COUNTROWS ( DataQuality ), DataQuality[Severity] = "Error" )
+DQ Warnings = CALCULATE ( COUNTROWS ( DataQuality ), DataQuality[Severity] = "Warning" )
+Forces Submitted = CALCULATE ( DISTINCTCOUNT ( Submissions[ForceKey] ), Submissions[IsCurrent] = TRUE () )
+Forces With Errors = CALCULATE ( DISTINCTCOUNT ( DataQuality[ForceKey] ), DataQuality[Severity] = "Error" )
 Sections Complete % =
-    VAR _all = CALCULATE ( DISTINCTCOUNT ( FactInputCell[SectionKey] ) )
-    VAR _done =
-        CALCULATE (
-            DISTINCTCOUNT ( FactInputCell[SectionKey] ),
-            FactInputCell[SectionStatus] IN { "Complete", "Not required" }
-        )
-    RETURN DIVIDE ( _done, _all )
+    DIVIDE (
+        CALCULATE ( DISTINCTCOUNT ( FactInputCell[SectionKey] ), FactInputCell[SectionStatus] IN { "Complete", "Not required" } ),
+        DISTINCTCOUNT ( FactInputCell[SectionKey] )
+    )
 
-// ------------------------------------------------- Reconciliation (Stage 4)
-// Should equal the sum of the Total columns forces see in the template (officer rows).
-Check: Direct Officer Hours =
-    CALCULATE ( [Officer Hours], FactDeployed[Source] = "Direct" )
+// ---------------------------------------- ROUTE B (backup workbooks)
+WB MD Officers = SUM ( WB_FactMD[Officers] )
+WB MD Cost = SUM ( WB_FactMD[Cost] )
+WB WT Daily Cost = SUM ( WB_FactWT[CostPerDay] )
+WB WT Tournament Cost = SUM ( WB_FactWT[TournamentCost] )
+WB Command Team Cost = CALCULATE ( SUM ( WB_FactOtherPages[Cost] ), WB_FactOtherPages[Page] = "Command Team & Planning" )
+WB Other Resources Cost = CALCULATE ( SUM ( WB_FactOtherPages[Cost] ), WB_FactOtherPages[Page] = "Other Resources" )
+WB Grand Total Cost = [WB MD Cost] + [WB WT Tournament Cost] + [WB Command Team Cost] + [WB Other Resources Cost]
 
-// Officers implied by PSU counts x configuration; compare with [PSU Units] x config sums.
-Check: PSU Officers =
-    CALCULATE ( [Officers], FactDeployed[Source] = "PSU expansion" )
+// ------------------------------------------- Reconciliation (Route A = B)
+// With the same return and fixtures, these must be 0 (RuleSet = LEGACY).
+Check: MD Cost A minus B = [Calendar Cost] - [WB MD Cost]
+Check: WT Cost A minus B = [WT Tournament Cost] - [WB WT Tournament Cost]

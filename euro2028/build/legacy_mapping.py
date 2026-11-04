@@ -99,7 +99,7 @@ MAPPING = [
     ("MD", 258, "Mutual Aid Requested - Intel", ["MD-INT-02"], "Retained", ""),
     ("MD", 263, "Force Supplied - Ancillary Team", ["MD-ANC-01"], "Retained", ""),
     ("MD", 265, "Mutual Aid Requested - Ancillary Team", ["MD-ANC-02"], "Retained", ""),
-    ("MD", 269, "Additional Resources", ["MD-ADD-01"], "Retained", "Now priced by selected rank (D-07)"),
+    ("MD", 269, "Additional Resources", ["MD-ADD-01", "MD-ADD-02"], "Split", "Split into Force Supplied / Mutual Aid blocks; rank now collected"),
     # ---- WT
     ("WT", 6, "Force Supplied - Level 1 PSU / Serials Wider Community Public Order Policing", [], "Retired", "Level 1 PSU removed"),
     ("WT", 9, "Force Supplied - Level 2 PSU / Serials Wider Community Public Order Policing", ["WT-PSC-01"], "Retained", ""),
@@ -131,7 +131,7 @@ MAPPING = [
     ("WT", 82, "Mutual Aid - Servator Non Complex", [], "Retired", "D-09"),
     ("WT", 86, "Force Supplied- Fan Zone Armed Response (ARVs)", ["WT-FZA-01"], "Retained", ""),
     ("WT", 88, "Mutual Aid Requested- Fan Zone Armed Response (ARVs)", ["WT-FZA-02"], "Retained", ""),
-    ("WT", 92, "Additional Resources", ["WT-ADD-01"], "Retained", "Now priced by selected rank (D-07)"),
+    ("WT", 92, "Additional Resources", ["WT-ADD-01", "WT-ADD-02"], "Split", "Split into Force Supplied / Mutual Aid blocks; rank now collected"),
 ]
 
 # New resources with no legacy equivalent
@@ -148,6 +148,8 @@ ADDED = {
     "MD-LFR-03": "New: Live Facial Recognition", "MD-LFR-04": "New: Live Facial Recognition",
     "MD-CBR-01": "New: CBRN General Responder", "MD-CBR-02": "New: CBRN General Responder",
     "MD-CBR-03": "New: CBRN Officer(s) by role profile", "MD-CBR-04": "New: CBRN Officer(s) by role profile",
-    "WT-APO-01": "New: Additional POPS by option + role profile",
-    "WT-APO-02": "New: Additional POPS by option + role profile",
+    "WT-APO-01": "New: Additional POPS (Wider Community) by role profile + rank",
+    "WT-APO-02": "New: Additional POPS (Wider Community) by role profile + rank",
+    "WT-APO-03": "New: Additional POPS (Fan Zone) by role profile + rank",
+    "WT-APO-04": "New: Additional POPS (Fan Zone) by role profile + rank",
 }

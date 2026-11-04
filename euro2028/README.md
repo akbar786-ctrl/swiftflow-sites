@@ -1,49 +1,34 @@
-# EURO 2028 – Resource Data Collection and Power BI Model
+# EURO 2028 – Resource Collection and Power BI Model
 
-A simplified force collection template and a Power BI model that replaces the
-background calculation sheets of the legacy *Base Assumptions MPSTH – Uniform*
-workbook.
+Forces complete one collection template. Two routes turn returns into the dashboard, and both give **identical results** using the legacy calculation rules:
 
-> Classification: the template and outputs are designed for **OFFICIAL** use.
-> No force data is stored in this repository. `output/samples/` contains a
-> **synthetic** submission for testing only.
+| Route | How | When |
+|---|---|---|
+| **A – Power BI** (primary) | Power BI reads the completed collection templates and does every calculation in Power Query / DAX. | Normal use |
+| **B – Backup workbook** (fallback) | Paste a return into the backup calculation workbook; it calculates everything in Excel (same pages as the old workbook); Power BI reads its output pages. | If Route A is unavailable |
 
-## What is here
+> OFFICIAL. No force data is stored here. `output/samples/` holds **synthetic** test files only.
 
-| Path | Contents |
+## Files
+
+| File | Purpose |
 |---|---|
-| `output/E28_Collection_Template_v1.0.0.xlsx` | Force collection template (Cover, Guidance, MD Collection, WT Collection, optional Command Team / Other Resources). |
-| `output/E28_Reference_Tables.xlsx` | Every reference table the model loads: resources, ranks, rates, uplifts, parameters, old-to-new mapping, decisions, open items, and empty tables for fixtures, capacity, equipment and scenarios. |
-| `output/samples/SYNTHETIC_Submission_TEST_FORCE.xlsx` | Synthetic completed return with deliberate data-quality errors. |
-| `powerbi/*.pq` | Power Query M, one file per query, numbered in dependency order. |
-| `powerbi/measures.dax` | DAX measures. |
-| `engine/e28_engine.py` | Python reference implementation of the same rules (used for testing and reconciliation). |
-| `tests/` | Unit tests (`python3 -m unittest discover -s euro2028/tests -v`). |
-| `build/` | **Source of truth.** `catalogue.py` (resources), `reference_data.py` (rates, parameters, decisions), `legacy_mapping.py`, and the builders. |
-| `docs/` | Audit, calculation specification, data model, validation plan. |
+| `output/E28_Collection_Template_v2.0.0.xlsx` | Sent to forces. Same form as the draft (columns A–C; risk level on top; Super High on Match Day). |
+| `output/E28_Backup_Calculation_Workbook_v2.0.0.xlsx` | Route B. Same input pages + the legacy calculation pages (Demand Sheet, Cost Calculator, Cost Sheet, MD/WT Demand & Cost Templates, Fleet, Command Team & Planning, Other Resources, Baseline Costs, GDP Deflators) + Summary. |
+| `output/E28_Reference_Tables.xlsx` | Everything Power BI looks up: resources, ranks, rates, uplifts, parameters, mapping, decisions, open items. |
+| `powerbi/` | Power Query (one query per file, numbered in build order) and `measures.dax`. |
+| `docs/` | [Power BI build guide](docs/03_powerbi_build_guide.md) · [Calculation rules](docs/02_calculation_rules.md) · [Validation](docs/04_validation.md) · [Audit](docs/01_audit.md) |
 
-## Rebuilding
+## Evidence the numbers are right
 
-```bash
-python3 euro2028/build/build_all.py        # template + reference workbook
-python3 euro2028/build/build_sample.py     # synthetic submission
-python3 -m unittest discover -s euro2028/tests -v
-```
+* Re-keyed legacy return: **12,648 legacy Demand Sheet / Cost Sheet cells compared (officers and cost); all identical except 9 officer and 7 cost values** – all on 13, 16 and 19 June, caused by the legacy halving defect on those three dates only (audit C3).
+* Command Team & Planning **£338,678.48** and Other Resources **£75,426.98** – identical to the legacy workbook.
+* All hourly rates and the £35,716.16 package identical to the legacy Baseline Costs (to 6 d.p.).
+* Backup workbook (Excel formulas) = Power BI rules (Python reference engine) on every line, date and risk level.
+* 26 automated tests: `python3 -m unittest discover -s euro2028/tests -v`
 
-To add, rename or retire a resource, edit `build/catalogue.py` (and
-`build/legacy_mapping.py`), then rebuild. Resource IDs are stable keys – never
-reuse an ID for a different resource.
+## Changing things
 
-## Documents
-
-1. [Stage 1 – Audit of the legacy workbook](docs/01_audit.md)
-2. [Stage 2/3 – Calculation specification](docs/02_calculation_spec.md)
-3. [Stage 3 – Power BI data model and build steps](docs/03_data_model.md)
-4. [Stage 4 – Validation strategy and results](docs/04_validation.md)
-
-## Status
-
-Decisions D-01 to D-11 and open items OI-01 to OI-08 are listed in
-`docs/02_calculation_spec.md` and in the reference workbook (`LogDecision`,
-`LogOpenItem`). The model runs with documented defaults for every open item;
-each default is a single parameter or reference-table change.
+Edit `build/catalogue.py` (resources) or `build/reference_data.py` (rates, parameters), then
+`python3 euro2028/build/build_all.py` and re-run the tests. Resource IDs are permanent keys.
+The rule set is one parameter: `RuleSet` = `LEGACY` (default) or `AGREED`.

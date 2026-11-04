@@ -31,15 +31,15 @@ def _tables():
         res_rows.append([r["resource_id"], r["collection"], r["section_code"],
                          C.SECTIONS[(r["collection"], r["section_code"])], r["name"], r["supply"],
                          dict(C.SUPPLY_TYPES)[r["supply"]], r["row_type"], r["portfolio"], r["location"],
-                         r["matchday_only"], r["basis"], r["mercury"], "DRAFT - confirm (OI-04)",
-                         cfg.get("L2"), cfg.get("L3"), r["instructions"]])
+                         r["matchday_only"], r["day_group"], r["legacy_insp_ma"], r["basis"], r["mercury"],
+                         "DRAFT - confirm (OI-04)", cfg.get("L2"), cfg.get("L3"), r["instructions"]])
         for ln in C.lines(r):
             line_rows.append([C.row_key(r["resource_id"], ln["line"]), r["resource_id"], ln["line"],
                               ln["rank"], C.RANK_LABEL.get(ln["rank"]) if ln["rank"] else None,
                               ln["unit_level"], ln["unit_list"] or r["rank_list"], r["role_list"], ln["label"]])
     table("DimResource", "DimResource", "One row per collection resource (Resource ID is the stable key).",
           ["ResourceID", "Collection", "SectionCode", "Section", "Resource", "SupplyCode", "Supply", "RowType",
-           "Portfolio", "Location", "MatchdayOnly", "Basis", "MercurySkill", "MercuryStatus",
+           "Portfolio", "Location", "MatchdayOnly", "DayGroup", "LegacyInspMA", "Basis", "MercurySkill", "MercuryStatus",
            "PsuConfigL2", "PsuConfigL3", "Instructions"], res_rows)
     table("DimResourceLine", "DimResourceLine", "One row per collection line (Row Key = ResourceID|Line).",
           ["RowKey", "ResourceID", "Line", "FixedRankCode", "FixedRank", "UnitLevel", "RankOrUnitList",

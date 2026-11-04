@@ -72,6 +72,9 @@ UPLIFT_STEPS = [
     ("HF", dt.date(2026, 9, 1), 1.04, "Pay award 26/27 (Baseline Costs!C27:C32)"),
     ("HF", dt.date(2027, 9, 1), 1.035, "Pay award 27/28 (Baseline Costs!O27:O32)"),
     ("HF", dt.date(2028, 9, 1), 1.03, "Pay award 28/29 (Baseline Costs!AA27:AA32)"),
+    ("CTP", dt.date(2026, 9, 1), _defl_2627 + 0.04, "Monthly salary x (deflator 26/27 + pay award 26/27) (Command Team & Planning!B13)"),
+    ("CTP", dt.date(2027, 9, 1), 1.035, "Pay award 27/28 (Command Team & Planning!N13)"),
+    ("CTP", dt.date(2028, 9, 1), 1.03, "Pay award 28/29 (Command Team & Planning!Z13)"),
     ("MAPSU", dt.date(2026, 9, 1), 1.04, "Pay award 26/27 (Baseline Costs!C17)"),
     ("MAPSU", dt.date(2027, 9, 1), 1.035, "Pay award 27/28 (Baseline Costs!O17)"),
     ("MAPSU", dt.date(2028, 9, 1), 1.03, "Pay award 28/29 (Baseline Costs!AA17)"),
@@ -109,6 +112,11 @@ ZERO_COST_RULES = [
 # ---------------------------------------------------------------------------
 PARAMETERS = [
     # name, value, type, description, source
+    ("RuleSet", "LEGACY", "text",
+     "LEGACY reproduces the old workbook's calculation logic (selected by the project team). AGREED applies "
+     "the revised rules D-02, D-03, D-05, D-06, D-07. See docs/02_calculation_spec.md section 5.", "Decision D-12"),
+    ("OtherResourcesRateDate2728", dt.date(2027, 6, 1), "date",
+     "Rate month for Other Resources FY 2027-28 hours.", "Legacy Other Resources!E7 used Baseline Costs column L (Jun-2027)."),
     ("RateEffectiveDate", dt.date(2028, 6, 1), "date",
      "Date at which hourly rates and the MA package are priced (tournament month).",
      "Legacy Cost Calculator used Baseline Costs column X (Jun-2028)."),
@@ -127,8 +135,12 @@ PARAMETERS = [
      "WT day assumptions (reproduces legacy WT Cost Calculator rows 303-311).", "OPEN ITEM OI-03"),
     ("MA_ToD_Collected", "FALSE", "bool",
      "Whether Normal ToD is collected/costed on mutual-aid officer rows.", "OPEN ITEM OI-01"),
-    ("TemplateVersion", "1.0.0", "text", "Collection template version accepted by the model.", "Build"),
+    ("TemplateVersion", "2.0.0", "text", "Collection template version accepted by the model.", "Build"),
 ]
+
+# Legacy "Other Resources" categories (Other Resources!A6:A26), each with Sergeant and Constable rows
+OTHER_RESOURCE_CATEGORIES = ["Media Management", "Licensing", "Crime Investigation", "Intelligence Arrangements",
+                             "Post Event Investigation", "Professional Standards & Legal", "Command Team & Planning"]
 
 WT_DAY_ASSUMPTIONS = [  # risk code, days, source  (Decision D-08: national assumptions)
     ("L", 7, "WT Cost Template!H7"), ("M", 11, "WT Cost Template!I7"),
@@ -182,8 +194,10 @@ DECISIONS = [
     ("D-08", "Wider Tournament keeps Super High. WT day counts per risk level are national assumptions."),
     ("D-09", "Level 1 PSU, Servator Complex/Non-Complex, CTSFO Overlay and MA Command are retired."),
     ("D-10", "Command Team & Planning, Other Resources and Fleet are brought into Power BI."),
-    ("D-11", "Template layout: risk level is the top header, relative day beneath, measure beneath that. "
-             "Super High is added to Match Day."),
+    ("D-11", "Template layout: forces' form (columns A-C), risk level on top, relative day beneath, measure "
+             "beneath that. Super High is added to Match Day."),
+    ("D-12", "Calculations reproduce the legacy workbook logic (RuleSet = LEGACY), in Power BI and in the backup "
+             "calculation workbook. The agreed revised rules remain available as RuleSet = AGREED."),
 ]
 
 OPEN_ITEMS = [

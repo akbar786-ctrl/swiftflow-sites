@@ -20,7 +20,11 @@ ADDITIONAL   Free-text resource + supply type + rank chosen by the force.
 
 from collections import OrderedDict
 
-TEMPLATE_VERSION = "1.0.0"
+TEMPLATE_VERSION = "2.0.0"
+
+# Sheet names match the forces' draft form
+SHEET_NAMES = {"MD": "Match Day Resource", "WT": "Wider Tournament Resource"}
+LISTS_SHEET = "Data Info"
 
 # ---------------------------------------------------------------------------
 # Dimensions
@@ -126,12 +130,21 @@ def _r(coll, sec, num, name, supply, rtype, portfolio, location, *,
        units=None, psu_config=None, matchday_only=False, basis="Officers",
        mercury=None, instructions=None):
     rid = f"{coll}-{sec}-{num:02d}"
+    # Legacy Demand Sheet priority group (which relative day wins when a date is
+    # several relative days for fixtures of the same risk level):
+    #   MDONLY  matchday-only resources: Match Day only
+    #   NONMD   non-matchday public order: MD-1 > MD-2 > MD+1 (Match Day not used)
+    #   STD     all other resources: MD > MD-1 > MD-2 > MD+1
+    day_group = "MDONLY" if matchday_only else ("NONMD" if location == "Non-Matchday" else "STD")
     _RES.append(dict(
         resource_id=rid, collection=coll, section_code=sec, name=name,
         supply=supply, row_type=rtype, portfolio=portfolio, location=location,
         ranks=ranks, n_lines=n_lines, rank_list=rank_list, role_list=role_list,
         units=units, psu_config=psu_config, matchday_only=matchday_only,
         basis=basis, mercury=mercury or "", instructions=instructions or "",
+        day_group=day_group,
+        # Legacy Cost Calculator charged In-Stadium PSU Inspectors at the MA Inspector rate
+        legacy_insp_ma=(rtype == "PSU_CONFIG" and location == "In Stadium"),
     ))
     return rid
 
@@ -139,7 +152,7 @@ def _r(coll, sec, num, name, supply, rtype, portfolio, location, *,
 STD = ["INSP", "SGT", "PC"]
 SP = ["SGT", "PC"]
 CFG_TXT = "Enter the number of each rank in ONE {lvl} / serial, with the hours each officer works."
-CNT_TXT = "Enter the number of PSUs / serials. Choose PSU or Serial in column D."
+CNT_TXT = "Enter the number of PSUs / serials. Choose PSU or Serial in column C."
 
 # Sections: code -> (collection, title, portfolio-for-header)
 SECTIONS = OrderedDict()
@@ -200,10 +213,10 @@ for k, (nm, merc) in enumerate([("Working at Height Complex Protest Removal", "P
 _section("MD", "APO", "Additional Public Order / Public Safety Resources")
 _r("MD", "APO", 1, "Force Supplied - Additional Public Order", "FS", "ROLE",
    "Public Order / Public Safety", "General", n_lines=7, rank_list="Ranks_All",
-   role_list="Roles_POPS", instructions="Choose a role profile and rank on each line.")
+   role_list="Roles_POPS", instructions="Choose the rank in column A and the role profile in column C.")
 _r("MD", "APO", 2, "Mutual Aid Requested - Additional Public Order", "MA", "ROLE",
    "Public Order / Public Safety", "General", n_lines=6, rank_list="Ranks_All",
-   role_list="Roles_POPS", instructions="Choose a role profile and rank on each line.")
+   role_list="Roles_POPS", instructions="Choose the rank in column A and the role profile in column C.")
 
 _section("MD", "MNT", "Mounted")
 for k, (nm, merc) in enumerate([("Mounted Commander", "Mounted - Commander"),
@@ -255,10 +268,10 @@ for k, (nm, rk, merc) in enumerate([("Operational Firearms Commander", STD, "Fir
 _section("MD", "AAP", "Additional Armed Policing")
 _r("MD", "AAP", 1, "Force Supplied - Armed Response Overlay", "FS", "ROLE",
    "Armed Policing", "General", n_lines=7, rank_list="Ranks_All", role_list="Roles_Armed",
-   instructions="Choose a role profile and rank on each line.")
+   instructions="Choose the rank in column A and the role profile in column C.")
 _r("MD", "AAP", 2, "Mutual Aid Requested - Armed Response Overlay", "MA", "ROLE",
    "Armed Policing", "General", n_lines=7, rank_list="Ranks_All", role_list="Roles_Armed",
-   instructions="Choose a role profile and rank on each line.")
+   instructions="Choose the rank in column A and the role profile in column C.")
 
 _section("MD", "DFX", "Disruptive Effects")
 for k, (nm, merc) in enumerate([("Servator Disruptive Effects", "DEO Officer"),
@@ -303,10 +316,10 @@ _r("MD", "CBR", 2, "Mutual Aid Requested - General Responder", "MA", "OFFICER", 
    ranks=STD, mercury="CBRN - General Responder")
 _r("MD", "CBR", 3, "Force Supplied - CBRN Officer(s)", "FS", "ROLE", "CBRN", "General",
    n_lines=5, rank_list="Ranks_All", role_list="Roles_CBRN",
-   instructions="Choose a CBRN role profile and rank on each line.")
+   instructions="Choose the rank in column A and the CBRN role profile in column C.")
 _r("MD", "CBR", 4, "Mutual Aid Requested - CBRN Officer(s)", "MA", "ROLE", "CBRN", "General",
    n_lines=5, rank_list="Ranks_All", role_list="Roles_CBRN",
-   instructions="Choose a CBRN role profile and rank on each line.")
+   instructions="Choose the rank in column A and the CBRN role profile in column C.")
 
 _section("MD", "CMD", "Non Public Order Force Command")
 _r("MD", "CMD", 1, "Force Supplied - Command", "FS", "OFFICER", "Command", "General",
@@ -339,9 +352,12 @@ _r("MD", "ANC", 2, "Mutual Aid Requested - Ancillary Team", "MA", "OFFICER", "An
    ranks=SP, mercury="Ancillary")
 
 _section("MD", "ADD", "Additional Resources")
-_r("MD", "ADD", 1, "Additional Resource (describe in column E)", "FS", "ADDITIONAL",
-   "Additional", "General", n_lines=10, rank_list="Ranks_All",
-   instructions="Describe the resource, choose Force Supplied or Mutual Aid, and choose a rank.")
+_r("MD", "ADD", 1, "Force Supplied - Additional Resource", "FS", "ADDITIONAL",
+   "Additional", "General", n_lines=5, rank_list="Ranks_All",
+   instructions="Describe the resource in column B and choose the rank in column C.")
+_r("MD", "ADD", 2, "Mutual Aid Requested - Additional Resource", "MA", "ADDITIONAL",
+   "Additional", "General", n_lines=5, rank_list="Ranks_All",
+   instructions="Describe the resource in column B and choose the rank in column C.")
 
 # ---------------- WIDER TOURNAMENT ----------------
 _section("WT", "PSC", "PSU / Serial Configurations")
@@ -383,12 +399,13 @@ _r("WT", "POP", 8, "Mutual Aid Requested - Evidence Gathering Team Officer", "MA
    instructions="Number of shifts")
 
 _section("WT", "APO", "Additional POPS Resources")
-_r("WT", "APO", 1, "Force Supplied - Additional Public Order", "FS", "ROLE",
-   "Public Order / Public Safety", "Option", n_lines=11, rank_list="Ranks_All", role_list="Roles_POPS",
-   instructions="Choose Wider Community or Fan Zone, a role profile and a rank on each line.")
-_r("WT", "APO", 2, "Mutual Aid Requested - Additional Public Order", "MA", "ROLE",
-   "Public Order / Public Safety", "Option", n_lines=9, rank_list="Ranks_All", role_list="Roles_POPS",
-   instructions="Choose Wider Community or Fan Zone, a role profile and a rank on each line.")
+for k, (loc, nf, nm) in enumerate([("Wider Community", 6, 5), ("Fan Zone", 5, 4)]):
+    _r("WT", "APO", k * 2 + 1, f"Force Supplied - Additional Public Order ({loc})", "FS", "ROLE",
+       "Public Order / Public Safety", loc, n_lines=nf, rank_list="Ranks_All", role_list="Roles_POPS",
+       instructions="Choose the rank in column A and the role profile in column C.")
+    _r("WT", "APO", k * 2 + 2, f"Mutual Aid Requested - Additional Public Order ({loc})", "MA", "ROLE",
+       "Public Order / Public Safety", loc, n_lines=nm, rank_list="Ranks_All", role_list="Roles_POPS",
+       instructions="Choose the rank in column A and the role profile in column C.")
 
 _section("WT", "DFX", "Fan Zone - Disruptive Effects")
 for k, (nm, merc) in enumerate([("Disruptive Effects Officer", "DEO Officer"),
@@ -420,9 +437,12 @@ _r("WT", "WTP", 4, "Force Supplied - Custody", "FS", "OFFICER", "Custody", "Gene
    ranks=SP, basis="Shifts", mercury="Custody", instructions="Number of shifts")
 
 _section("WT", "ADD", "Additional Resources")
-_r("WT", "ADD", 1, "Additional Resource (describe in column E)", "FS", "ADDITIONAL",
-   "Additional", "Option", n_lines=10, rank_list="Ranks_All",
-   instructions="Describe the resource, choose Force Supplied or Mutual Aid, a location and a rank.")
+_r("WT", "ADD", 1, "Force Supplied - Additional Resource", "FS", "ADDITIONAL",
+   "Additional", "General", n_lines=5, rank_list="Ranks_All",
+   instructions="Describe the resource in column B and choose the rank in column C.")
+_r("WT", "ADD", 2, "Mutual Aid Requested - Additional Resource", "MA", "ADDITIONAL",
+   "Additional", "General", n_lines=5, rank_list="Ranks_All",
+   instructions="Describe the resource in column B and choose the rank in column C.")
 
 
 RESOURCES = _RES
@@ -456,9 +476,11 @@ def applicable(res, measure, day=None):
     rt = res["row_type"]
     if res["collection"] == "MD" and res["matchday_only"] and day not in (None, "MD"):
         return False
+    if res["collection"] == "MD" and res["day_group"] == "NONMD" and day == "MD":
+        return False                     # non-matchday resources: Match Day not used (legacy)
     if rt in ("PSU_COUNT", "MA_PSU"):
         return measure == "NUM"          # hours come from PSU config / MA package
-    if res["supply"] == "MA" and rt != "ADDITIONAL" and measure == "TOD":
+    if res["supply"] == "MA" and measure == "TOD":
         # Mirrors the new template's hatching of Normal ToD on mutual-aid rows.
         # OPEN ITEM OI-01: switch to True if MA Normal ToD is to be collected.
         return MA_TOD_COLLECTED
@@ -471,6 +493,8 @@ NA_RULES_TEXT = [
      "Legacy Demand Sheet only used the Match Day figures for these rows."),
     ("NA-02", "PSU / serial count rows (force and mutual aid)", "Only 'Number required' is collected. Hours are N/A.",
      "Force-supplied hours come from the matching PSU configuration rows; mutual aid is costed by package."),
+    ("NA-04", "Non-matchday public order (PSU configuration and counts)", "Match Day column is N/A.",
+     "Legacy Demand Sheet never used the Match Day figures for non-matchday rows (they cover MD-2, MD-1, MD+1)."),
     ("NA-03", "Mutual aid officer rows", "Normal ToD is N/A (Extra Hours collected).",
      "Mirrors the hatching in the new draft template. OPEN ITEM OI-01."),
 ]

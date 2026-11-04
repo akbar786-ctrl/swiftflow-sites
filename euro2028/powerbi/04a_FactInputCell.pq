@@ -1,36 +1,42 @@
 // ============================================================================
 // FactInputCell (load: yes, hidden) - every input cell of every CURRENT
-// submission, with the blank / zero / N/A / invalid rules applied.
+// submission with the blank / zero / N-A / invalid rules applied.
 // Mirrors engine._clean_inputs. Feeds FactInput and DataQuality.
+//
+// N/A rules (RefNARule): NA-01 matchday-only -> Match Day only; NA-04
+// non-matchday -> Match Day N/A; NA-02 PSU count rows -> Number only;
+// NA-03 mutual-aid Normal ToD N/A unless parameter MA_ToD_Collected = TRUE.
 // ============================================================================
 let
     Params     = Record.FromList(RefParameter[Value], RefParameter[Parameter]),
     MaToD      = Text.Upper(Text.From(Params[MA_ToD_Collected])) = "TRUE",
     Current    = Table.SelectRows(Submissions, each [IsCurrent]),
-    Read       = Table.AddColumn(Current, "Cells", each
-                    Table.Combine({
-                        Table.AddColumn(fnReadCollection([Content], "MD Collection"), "Collection", each "MD", type text),
-                        Table.AddColumn(fnReadCollection([Content], "WT Collection"), "Collection", each "WT", type text)})),
+    // section completion (Cover sheet table tblSectionStatus)
+    Status     = Table.Combine(Table.TransformRows(Current, (s) =>
+                    let t = try Excel.Workbook(s[Content], true, true){[Item = "tblSectionStatus", Kind = "Table"]}[Data]
+                            otherwise #table({"SectionKey", "Status"}, {})
+                    in  Table.AddColumn(Table.SelectColumns(t, {"SectionKey", "Status"}), "SubmissionID", each s[SubmissionID]))),
+    Read       = Table.AddColumn(Current, "Cells", each Table.Combine({
+                    Table.AddColumn(fnReadCollection([Content], "Match Day Resource"), "Collection", each "MD", type text),
+                    Table.AddColumn(fnReadCollection([Content], "Wider Tournament Resource"), "Collection", each "WT", type text)})),
     Cells      = Table.ExpandTableColumn(Table.SelectColumns(Read, {"SubmissionID", "ForceKey", "Cells"}), "Cells",
-                    {"Collection", "RowKey", "ResourceID", "Line", "RankText", "Role", "SupplyText", "LocationText",
-                     "RiskCode", "DayCode", "MeasureCode", "RawValue", "IsBlank", "SectionKey", "SectionStatus"}),
-    // structural check: unknown row keys are dropped here and reported in DataQuality
-    Known      = Table.NestedJoin(Cells, {"RowKey"}, DimResourceLine, {"RowKey"}, "RL", JoinKind.Inner),
-    WithLine   = Table.ExpandTableColumn(Known, "RL", {"FixedRankCode", "UnitLevel"}),
-    WithRes    = Table.ExpandTableColumn(
-                    Table.NestedJoin(WithLine, {"ResourceID"}, DimResource, {"ResourceID"}, "R", JoinKind.LeftOuter),
-                    "R", {"RowType", "SupplyCode", "MatchdayOnly", "Portfolio", "Location", "Resource"}),
-    LineSupply = Table.AddColumn(WithRes, "LineSupplyCode", each
-                    if [RowType] = "ADDITIONAL" then
-                        (if [SupplyText] = "Force Supplied" then "FS" else if [SupplyText] = "Mutual Aid Requested" then "MA" else null)
-                    else [SupplyCode], type text),
-    Applicable = Table.AddColumn(LineSupply, "IsApplicable", each
+                    {"Collection", "RowKey", "ResourceID", "Line", "ColA", "ColB", "ColC", "RiskCode", "DayCode",
+                     "MeasureCode", "RawValue", "IsBlank"}),
+    Known      = Table.ExpandTableColumn(Table.NestedJoin(Cells, {"RowKey"}, DimResourceLine, {"RowKey"}, "RL", JoinKind.Inner),
+                    "RL", {"FixedRankCode", "UnitLevel"}),
+    WithRes    = Table.ExpandTableColumn(Table.NestedJoin(Known, {"ResourceID"}, DimResource, {"ResourceID"}, "R", JoinKind.LeftOuter),
+                    "R", {"RowType", "SupplyCode", "MatchdayOnly", "DayGroup", "SectionCode"}),
+    SecKey     = Table.AddColumn(WithRes, "SectionKey", each [Collection] & "-" & [SectionCode], type text),
+    WithStatus = Table.ExpandTableColumn(Table.NestedJoin(SecKey, {"SubmissionID", "SectionKey"}, Status,
+                    {"SubmissionID", "SectionKey"}, "S", JoinKind.LeftOuter), "S", {"Status"}, {"SectionStatus"}),
+    StatusFix  = Table.TransformColumns(WithStatus, {{"SectionStatus", each if _ = null then "Not started" else _, type text}}),
+    Applicable = Table.AddColumn(StatusFix, "IsApplicable", each
                     not (([Collection] = "MD" and [MatchdayOnly] = true and [DayCode] <> "MD")
+                         or ([Collection] = "MD" and [DayGroup] = "NONMD" and [DayCode] = "MD")
                          or (List.Contains({"PSU_COUNT", "MA_PSU"}, [RowType]) and [MeasureCode] <> "NUM")
-                         or ([LineSupplyCode] = "MA" and [MeasureCode] = "TOD" and not MaToD)), type logical),
+                         or ([SupplyCode] = "MA" and [MeasureCode] = "TOD" and not MaToD)), type logical),
     Parsed     = Table.AddColumn(Applicable, "Parsed", each
-                    if [IsBlank] then null
-                    else let n = try Number.From([RawValue]) otherwise null in n, type nullable number),
+                    if [IsBlank] then null else try Number.From([RawValue]) otherwise null, type nullable number),
     State      = Table.AddColumn(Parsed, "ValueState", each
                     if not [IsApplicable] then (if [IsBlank] then "NA" else "NA_WITH_VALUE")
                     else if [IsBlank] then (if List.Contains({"Complete", "Not required"}, [SectionStatus]) then "BLANK_AS_ZERO" else "BLANK")
