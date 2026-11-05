@@ -6,9 +6,16 @@ formatting byte-for-byte as designed) with the **original workbook's calculation
 using the original layout, formula style and logic, re-pointed at the new rows.
 
 **Match Day Resource headers are risk-first** (`swap_headers.py`): row 3 = Low (D:O) | Medium (P:AA) |
-High (AB:AM); row 4 = Match Day -2 / -1 / Match Day / +1 × Number required / Normal ToD / Extra Hours.
-Cells D:AM were moved with their formatting; the Automatic Total Figures (AN:AV) are now direct sums
-of the four day columns for each risk level and measure. Everything else on the page is unchanged.
+High (AB:AM) | **Super High (AN:AY)**; row 4 = Match Day -2 / -1 / Match Day / +1 × Number required /
+Normal ToD / Extra Hours. Cells D:AM were moved with their formatting; Super High is styled like High.
+The Automatic Total Figures (now AZ:BK, 4 risk levels × 3 measures) are direct sums of the four day
+columns. Everything else on the page is unchanged.
+
+**Super High (new – not in the original workbook).** Forces fill it only for a fixture judged Super
+High. It uses exactly the same logic as the other risk levels: the Demand Sheet has a Super High (SH)
+column on every date (blocks are now L | M | H | SH | Total), a fixture marked under SH draws on the
+Super High figures, and costs use the same rates. Checked by re-entering every High figure and
+fixture code from the original under Super High: results identical (0 differences).
 
 Two copies are produced:
 - `Euro_2028_Resource_Collection_v1_with_Calculations.xlsx` – built directly from the template package.

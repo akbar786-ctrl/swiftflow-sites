@@ -23,4 +23,5 @@ if __name__ == "__main__":
     out = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else OUT)
     with tempfile.TemporaryDirectory() as tmp:
         pages = build_calc_pages.build(SOURCE, os.path.join(tmp, "pages.xlsx"))
-        print(inject.inject(SOURCE, pages, out, {"Match Day Resource": swap_headers.transform}))
+        print(inject.inject(SOURCE, pages, out, {"Match Day Resource": swap_headers.transform},
+                                {"xl/workbook.xml": swap_headers.workbook}))

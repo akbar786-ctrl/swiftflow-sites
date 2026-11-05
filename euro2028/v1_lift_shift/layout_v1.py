@@ -2,9 +2,9 @@
 Row layout of the NEW template v1 (BLANK_Euro_2028_Resource_NEW.xlsx) and the
 legacy calculation logic that applies to each row.
 
-Columns are identical to the original collection survey:
-  Match Day Resource         D:L MD-2, M:U MD-1, V:AD Match Day, AE:AM MD+1,
-                             each Low | Medium | High x Number | Normal ToD | Extra Hours
+Columns (as delivered to forces, after swap_headers.py):
+  Match Day Resource         D:O Low, P:AA Medium, AB:AM High, AN:AY Super High,
+                             each MD-2 | MD-1 | MD | MD+1 x Number | Normal ToD | Extra Hours
   Wider Tournament Resource  D:O Low | Medium | High | Super High x Number | Normal ToD | Extra Hours
 
 verify(path) checks every row used here against the template's own labels.
@@ -12,15 +12,16 @@ verify(path) checks every row used here against the template's own labels.
 import openpyxl
 
 MD_SHEET, WT_SHEET = "Match Day Resource", "Wider Tournament Resource"
-SCEN = ["Low", "Medium", "High"]
+SCEN = ["Low", "Medium", "High", "Super High"]      # Match Day risk levels (Super High added)
 WT_SCEN = ["Low", "Medium", "High", "Super High"]
 # Match Day Resource columns after the header swap (risk level on top, then day, then measure):
-#   D:O Low, P:AA Medium, AB:AM High; within each, MD-2 | MD-1 | MD | MD+1 x Number | ToD | Extra Hours
+#   D:O Low, P:AA Medium, AB:AM High, AN:AY Super High;
+#   within each, MD-2 | MD-1 | MD | MD+1 x Number | ToD | Extra Hours.  Totals AZ:BK.
 DAY_IDX = {"MD-2": 0, "MD-1": 1, "MD": 2, "MD+1": 3}
 
 
 def md_col(day, s, m=0):
-    """Column number on Match Day Resource for relative day, risk index s (0 Low..2 High), measure m (0 Number, 1 ToD, 2 Extra)."""
+    """Column number on Match Day Resource for relative day, risk index s (0 Low..3 Super High), measure m (0 Number, 1 ToD, 2 Extra)."""
     return 4 + s * 12 + DAY_IDX[day] * 3 + m
 
 # ---------------------------------------------------------------- Match Day

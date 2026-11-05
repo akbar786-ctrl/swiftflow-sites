@@ -7,7 +7,11 @@ Proves the lifted-and-shifted calculations reproduce the original workbook.
    the Demand Sheet, Cost Sheet and WT pages with the values the original
    workbook calculated.
 
-Usage: python3 validate_against_original.py <original.xlsx> <new v1 workbook.xlsx> <work dir>
+Usage: python3 validate_against_original.py <original.xlsx> <new v1 workbook.xlsx> <work dir> [--super-high]
+
+--super-high  enters every High figure and High fixture code under SUPER HIGH
+              instead, and checks the Super High results equal the original
+              workbook's High results (Super High uses the same logic).
 The original is read locally only; nothing from it is written to the repository.
 """
 import os
@@ -111,7 +115,9 @@ def refs(formula, sheet):
     return [int(x) for x in re.findall(rf"'{sheet}'!\$?[A-Z]+\$?(\d+)", formula or "")]
 
 
-def main(orig, new, work):
+def main(orig, new, work, super_high=False):
+    def risk(s):                       # original risk index -> risk index used in the new workbook
+        return 3 if (super_high and s == 2) else s
     os.makedirs(work, exist_ok=True)
     oldv = openpyxl.load_workbook(orig, data_only=True)
     oldf = openpyxl.load_workbook(orig)
@@ -121,12 +127,14 @@ def main(orig, new, work):
     wb = openpyxl.load_workbook(new)
     for old_r, new_r in md_map.items():
         for c in range(4, 40):
-            wb[LY.MD_SHEET].cell(new_r, PERM[c]).value = oldv[OLD_MD].cell(old_r, c).value
+            nc = PERM[c] + (12 if super_high and (c - 4) % 9 // 3 == 2 else 0)
+            wb[LY.MD_SHEET].cell(new_r, nc).value = oldv[OLD_MD].cell(old_r, c).value
     for old_r, new_r in wt_map.items():
         for c in range(4, 16):
             wb[LY.WT_SHEET].cell(new_r, c).value = oldv[OLD_WT].cell(old_r, c).value
-    for c in range(4, 4 + 4 * B.CAL_DAYS):
-        wb["Demand Sheet"].cell(4, c).value = oldv["Demand Sheet"].cell(4, c).value
+    for k in range(B.CAL_DAYS):
+        for s in range(3):
+            wb["Demand Sheet"].cell(4, B.demand_col(k, risk(s))).value = oldv["Demand Sheet"].cell(4, 4 + 4 * k + s).value
     filled = os.path.join(work, "filled.xlsx")
     wb.save(filled)
     subprocess.run([shutil.which("soffice"), "--headless", "--calc", "--convert-to", "xlsx:Calc MS Excel 2007 XML",
@@ -153,12 +161,12 @@ def main(orig, new, work):
         nr = dmap[key]
         for k in range(B.CAL_DAYS):
             for s in range(3):
-                ov, nvv = od.cell(r, 4 + 4 * k + s).value or 0, nd.cell(nr, 4 + 4 * k + s).value or 0
+                ov, nvv = od.cell(r, 4 + 4 * k + s).value or 0, nd.cell(nr, B.demand_col(k, risk(s))).value or 0
                 stats["demand_cells"] += 1
                 if abs(ov - nvv) > 1e-9:
                     stats["demand_diff"] += 1
                     diffs.append(("demand", r, nr, k, s, ov, nvv))
-                ovc, nvc = oc.cell(r, 4 + 3 * k + s).value or 0, nc.cell(nr, 4 + 3 * k + s).value or 0
+                ovc, nvc = oc.cell(r, 4 + 3 * k + s).value or 0, nc.cell(nr, B.cost_col(k, risk(s))).value or 0
                 stats["cost_cells"] += 1
                 if abs(ovc - nvc) > 0.01:
                     stats["cost_diff"] += 1
@@ -210,4 +218,4 @@ def main(orig, new, work):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    main(*sys.argv[1:4], super_high="--super-high" in sys.argv)

@@ -5,7 +5,9 @@ at the new rows. Output: a workbook containing ONLY the calculation pages;
 inject.py then adds them to the untouched v1 template.
 
 Legacy logic (original workbook, verified cell by cell):
-  Demand Sheet  one block per date (Low | Medium | High | Total). A fixture is
+  Demand Sheet  one block per date (Low | Medium | High | Super High | Total).
+                Super High is NEW (not in the original): it follows exactly the
+                same logic as the other risk levels, using its own columns. A fixture is
                 marked by typing its code in row 4 under the risk column of its
                 date. For each risk column the IF chain picks ONE relative day:
                   standard rows      MD > MD-1 > MD-2 > MD+1
@@ -35,6 +37,7 @@ import layout_v1 as LY  # noqa: E402
 
 CAL_START = dt.date(2028, 6, 7)          # MD-2 of the opening fixture (9 Jun 2028)
 CAL_DAYS = 34                            # to 10 Jul 2028 (MD+1 of the final, 9 Jul 2028)
+NR = len(LY.SCEN)                        # Match Day risk levels: Low, Medium, High, Super High
 MDS, WTS = f"'{LY.MD_SHEET}'", f"'{LY.WT_SHEET}'"
 BC = "'Baseline Costs'"
 NAVY, BLUE, LIGHT = "1F3864", "2F5597", "D9E1F2"
@@ -147,7 +150,7 @@ def wt_lines(t):
 # Cost Calculator (survey layout: MD rows = survey rows; WT rows = survey row + WT_CC_OFFSET)
 # ---------------------------------------------------------------------------
 WT_CC_OFFSET = 345
-MD_XH_COLS = [L(LY.md_col(d, s, 2)) for d in ("MD-2", "MD-1", "MD", "MD+1") for s in range(3)]
+MD_XH_COLS = [L(LY.md_col(d, s, 2)) for d in ("MD-2", "MD-1", "MD", "MD+1") for s in range(NR)]
 WT_XH_COLS = [L(4 + 3 * s + 2) for s in range(4)]
 
 
@@ -176,12 +179,12 @@ def cost_calculator(wb, t):
         hdr(ws, 3, c, h)
     days = ["Match Day -2", "Match Day -1", "Match Day", "Match Day +1"]
     for i, d in enumerate(days):
-        hdr(ws, 3, 4 + 3 * i, d)
-        for s in range(3):
-            hdr(ws, 4, 4 + 3 * i + s, f"{LY.SCEN[s]}-Number required")
-    hdr(ws, 3, 16, "Automatic Total Figures Calculation")
-    for s in range(3):
-        hdr(ws, 4, 16 + s, f"{LY.SCEN[s]}-Number required")
+        hdr(ws, 3, 4 + NR * i, d)
+        for s in range(NR):
+            hdr(ws, 4, 4 + NR * i + s, f"{LY.SCEN[s]}-Number required")
+    hdr(ws, 3, 4 + 4 * NR, "Automatic Total Figures Calculation")
+    for s in range(NR):
+        hdr(ws, 4, 4 + 4 * NR + s, f"{LY.SCEN[s]}-Number required")
     ws.column_dimensions["A"].width, ws.column_dimensions["B"].width, ws.column_dimensions["C"].width = 18, 50, 24
 
     def put_row(sheet, r, out_r, n_cols, xh_cols, survey):
@@ -201,12 +204,14 @@ def cost_calculator(wb, t):
     ws.cell(5, 1, "MATCH DAY").font = F_BB
     for r in sorted(LY.MD_CONFIG.keys()):
         for i in range(3):
-            put_row(LY.MD_SHEET, r + i, r + i, 12, MD_XH_COLS, MDS)
+            put_row(LY.MD_SHEET, r + i, r + i, 4 * NR, MD_XH_COLS, MDS)
+    last = L(3 + 4 * NR)
     for r in sorted(LY.MD_COUNTS) + LY.md_officer_rows():
-        put_row(LY.MD_SHEET, r, r, 12, MD_XH_COLS, MDS)
+        put_row(LY.MD_SHEET, r, r, 4 * NR, MD_XH_COLS, MDS)
         if r not in LY.MD_COUNTS or LY.MD_COUNTS[r][0] == "MA":
-            for s in range(3):
-                ws.cell(r, 16 + s, f"=SUMIF($D$4:$O$4,{L(16 + s)}$4,D{r}:O{r})").number_format = "#,##0.00"
+            for s in range(NR):
+                tc = 4 + 4 * NR + s
+                ws.cell(r, tc, f"=SUMIF($D$4:${last}$4,{L(tc)}$4,D{r}:{last}{r})").number_format = "#,##0.00"
     top = WT_CC_OFFSET
     ws.cell(top - 2, 1, "WIDER TOURNAMENT").font = F_BB
     for s in range(4):
@@ -224,18 +229,18 @@ def cost_calculator(wb, t):
 # Demand Sheet and Cost Sheet (legacy IF chains)
 # ---------------------------------------------------------------------------
 def demand_col(k, s):
-    return 4 + 4 * k + s          # D + block of 4 (Low, Medium, High, Total)
+    return 4 + (NR + 1) * k + s   # D + block of 5 (Low, Medium, High, Super High, Total)
 
 
 def cost_col(k, s):
-    return 4 + 3 * k + s          # D + block of 3 (Low, Medium, High)
+    return 4 + NR * k + s         # D + block of 4 (Low, Medium, High, Super High)
 
 
 def survey_num(day, s, r):
     return f"{MDS}!${L(LY.md_col(day, s, 0))}${r}"
 
 
-CC_COL = {d: [L(4 + 3 * i + s) for s in range(3)] for i, d in enumerate(["MD-2", "MD-1", "MD", "MD+1"])}
+CC_COL = {d: [L(4 + NR * i + s) for s in range(NR)] for i, d in enumerate(["MD-2", "MD-1", "MD", "MD+1"])}
 CHAIN = {"STD": [(0, "MD"), (1, "MD-1"), (2, "MD-2"), (-1, "MD+1")],
          "NONMD": [(1, "MD-1"), (2, "MD-2"), (-1, "MD+1")],
          "MDONLY": [(0, "MD")]}
@@ -253,7 +258,7 @@ def calendar_pages(wb, t):
     dates = [CAL_START + dt.timedelta(i) for i in range(CAL_DAYS)]
     dem = wb.create_sheet("Demand Sheet")
     cst = wb.create_sheet("Cost Sheet")
-    for ws, width, kind in ((dem, 4, "D"), (cst, 3, "C")):
+    for ws, width, kind in ((dem, NR + 1, "D"), (cst, NR, "C")):
         for c, h in ((1, "Cell Input Instructions"), (2, "Resource "), (3, "Rank")):
             hdr(ws, 3, c, h)
         ws.column_dimensions["A"].width, ws.column_dimensions["B"].width, ws.column_dimensions["C"].width = 14, 50, 26
@@ -263,10 +268,10 @@ def calendar_pages(wb, t):
             cell.number_format = "ddd dd mmm yyyy"
             for i in range(1, width):
                 hdr(ws, 3, c0 + i)
-            for s, name in enumerate(["L", "M", "H", "Total"][:width]):
+            for s, name in enumerate(["L", "M", "H", "SH", "Total"][:width]):
                 hdr(ws, 5, c0 + s, name)
                 ws.column_dimensions[L(c0 + s)].width = 7
-            for s in range(3):
+            for s in range(NR):
                 if kind == "D":
                     m = ws.cell(4, c0 + s)
                     m.fill, m.border = PatternFill("solid", fgColor="FFF2CC"), BORDER
@@ -274,7 +279,7 @@ def calendar_pages(wb, t):
                     ws.cell(4, c0 + s, f"='Demand Sheet'!{L(demand_col(k, s))}4").number_format = '0;-0;;@'
     dem["A4"] = "Fixture code >"
     dem["A4"].font = F_BB
-    dem["A1"] = ("Demand Sheet - type the fixture code (e.g. A1) in row 4 under Low, Medium or High on each "
+    dem["A1"] = ("Demand Sheet - type the fixture code (e.g. A1) in row 4 under Low, Medium, High or Super High on each "
                  "match date. The risk column chosen sets the fixture's risk level.")
     cst["A1"] = "Cost Sheet - fixture codes are copied from the Demand Sheet."
     for ws in (dem, cst):
@@ -283,8 +288,8 @@ def calendar_pages(wb, t):
     rowmap = []
     for kind, p in lines:
         if kind == "section":
-            section(dem, r, p, 4 + 4 * CAL_DAYS - 1)
-            section(cst, r, p, 4 + 3 * CAL_DAYS - 1)
+            section(dem, r, p, 4 + (NR + 1) * CAL_DAYS - 1)
+            section(cst, r, p, 4 + NR * CAL_DAYS - 1)
             rowmap.append(("section", r, p))
             r += 1
             continue
@@ -292,7 +297,7 @@ def calendar_pages(wb, t):
             labels(ws, r, p["b"], p["c"])
         sr, cfg, grp = p["sr"], p["cfg"], p["group"]
         for k in range(CAL_DAYS):
-            for s in range(3):
+            for s in range(NR):
                 own = demand_col(k, s)
                 branches_d, branches_c = [], []
                 for off, day in CHAIN[grp]:
@@ -310,7 +315,7 @@ def calendar_pages(wb, t):
                 dem.cell(r, own, chain_formula(branches_d))
                 cst.cell(r, cost_col(k, s), chain_formula(branches_c)).number_format = "#,##0"
             t0 = demand_col(k, 0)
-            dem.cell(r, t0 + 3, f"=_xlfn.AGGREGATE(9,6,{L(t0)}{r}:{L(t0 + 2)}{r})").font = F_BB
+            dem.cell(r, t0 + NR, f"=_xlfn.AGGREGATE(9,6,{L(t0)}{r}:{L(t0 + NR - 1)}{r})").font = F_BB
         rowmap.append(("line", r, p))
         r += 1
     for ws in (dem, cst):
@@ -340,9 +345,9 @@ def md_templates(wb, rowmap, dates):
             labels(ws, r, f"='{src}'!B{r}" if p["b"] else None, f"='{src}'!C{r}")
             for k in range(n):
                 if src == "Demand Sheet":
-                    f = f"=IFERROR('Demand Sheet'!{L(demand_col(k, 3))}{r},\"\")"
+                    f = f"=IFERROR('Demand Sheet'!{L(demand_col(k, NR))}{r},\"\")"
                 else:
-                    f = f"=IFERROR(_xlfn.AGGREGATE(9,6,'Cost Sheet'!{L(cost_col(k, 0))}{r}:{L(cost_col(k, 2))}{r}),\"\")"
+                    f = f"=IFERROR(_xlfn.AGGREGATE(9,6,'Cost Sheet'!{L(cost_col(k, 0))}{r}:{L(cost_col(k, NR - 1))}{r}),\"\")"
                 ws.cell(r, 4 + k, f).number_format = "#,##0"
             ws.cell(r, 4 + n, f"=SUM(D{r}:{L(3 + n)}{r})").number_format = "#,##0"
             last = r
@@ -368,7 +373,7 @@ def fleet(wb, rowmap, dates):
             continue
         labels(ws, r, f"='Demand Sheet'!B{r}" if p["b"] else None, f"='Demand Sheet'!C{r}")
         for k in range(len(dates)):
-            ws.cell(r, 4 + k, f"='Demand Sheet'!{L(demand_col(k, 3))}{r}")
+            ws.cell(r, 4 + k, f"='Demand Sheet'!{L(demand_col(k, NR))}{r}")
 
 
 def wt_pages(wb, t):

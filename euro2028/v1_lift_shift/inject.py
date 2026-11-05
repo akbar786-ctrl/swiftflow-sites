@@ -121,11 +121,13 @@ def sheet_part(files, name):
     return "xl/" + re.search(r'Target="([^"]+)"', target).group(1).lstrip("/").replace("xl/", "")
 
 
-def inject(template, calc, out, sheet_transforms=None):
+def inject(template, calc, out, sheet_transforms=None, part_transforms=None):
     tz, cz = zipfile.ZipFile(template), zipfile.ZipFile(calc)
     files = {n: tz.read(n) for n in tz.namelist()}
     for name, fn in (sheet_transforms or {}).items():
         part = sheet_part(files, name)
+        files[part] = fn(files[part].decode("utf-8")).encode("utf-8")
+    for part, fn in (part_transforms or {}).items():
         files[part] = fn(files[part].decode("utf-8")).encode("utf-8")
     cfiles = {n: cz.read(n) for n in cz.namelist()}
     styles, xf_off = merge_styles(files["xl/styles.xml"].decode("utf-8"), cfiles["xl/styles.xml"].decode("utf-8"))
