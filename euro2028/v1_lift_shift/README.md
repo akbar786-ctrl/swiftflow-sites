@@ -5,6 +5,16 @@
 formatting byte-for-byte as designed) with the **original workbook's calculation pages added behind it**,
 using the original layout, formula style and logic, re-pointed at the new rows.
 
+**Match Day Resource headers are risk-first** (`swap_headers.py`): row 3 = Low (D:O) | Medium (P:AA) |
+High (AB:AM); row 4 = Match Day -2 / -1 / Match Day / +1 × Number required / Normal ToD / Extra Hours.
+Cells D:AM were moved with their formatting; the Automatic Total Figures (AN:AV) are now direct sums
+of the four day columns for each risk level and measure. Everything else on the page is unchanged.
+
+Two copies are produced:
+- `Euro_2028_Resource_Collection_v1_with_Calculations.xlsx` – built directly from the template package.
+- `Euro_2028_Resource_Collection_v1_with_Calculations_EXCEL.xlsx` – the same workbook re-saved by a
+  spreadsheet application, with all values pre-calculated. Use this one if the first will not open.
+
 | Page | Visible | What it does (original logic) |
 |---|---|---|
 | Demand Sheet | hidden | Calendar 7 Jun – 10 Jul 2028, blocks Low / Medium / High / Total. **Row 4: type the fixture code under the risk column of its date.** For each risk column one relative day is used: standard rows MD > MD-1 > MD-2 > MD+1; non-matchday PSUs MD-1 > MD-2 > MD+1; matchday-only PSUs MD. PSU officers = officers per PSU × PSUs. |

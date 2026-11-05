@@ -112,9 +112,21 @@ def convert_sheet(xml, sst, xf_off):
     return xml
 
 
-def inject(template, calc, out):
+def sheet_part(files, name):
+    wb = files["xl/workbook.xml"].decode("utf-8")
+    rels = files["xl/_rels/workbook.xml.rels"].decode("utf-8")
+    tag = re.search(rf'<sheet\b[^>]*name="{re.escape(name)}"[^>]*/>', wb).group(0)
+    rid = re.search(r'r:id="([^"]+)"', tag).group(1)
+    target = re.search(rf'<Relationship\b[^>]*Id="{rid}"[^>]*/>', rels).group(0)
+    return "xl/" + re.search(r'Target="([^"]+)"', target).group(1).lstrip("/").replace("xl/", "")
+
+
+def inject(template, calc, out, sheet_transforms=None):
     tz, cz = zipfile.ZipFile(template), zipfile.ZipFile(calc)
     files = {n: tz.read(n) for n in tz.namelist()}
+    for name, fn in (sheet_transforms or {}).items():
+        part = sheet_part(files, name)
+        files[part] = fn(files[part].decode("utf-8")).encode("utf-8")
     cfiles = {n: cz.read(n) for n in cz.namelist()}
     styles, xf_off = merge_styles(files["xl/styles.xml"].decode("utf-8"), cfiles["xl/styles.xml"].decode("utf-8"))
     files["xl/styles.xml"] = styles.encode("utf-8")
@@ -137,7 +149,7 @@ def inject(template, calc, out):
     for name, state, rid in csheets:
         target = re.search(rf'Id="{rid}"[^>]*Target="([^"]+)"', crels) or re.search(rf'Target="([^"]+)"[^>]*Id="{rid}"', crels)
         part = "xl/" + target.group(1).lstrip("/").replace("xl/", "")
-        xml = convert_sheet(cfiles[part].decode("utf-8"), [escape(s) for s in sst], xf_off)
+        xml = convert_sheet(cfiles[part].decode("utf-8"), sst, xf_off)   # sst text is already XML-escaped
         new_part = f"xl/worksheets/sheet{next_part}.xml"
         files[new_part] = xml.encode("utf-8")
         rels = rels.replace("</Relationships>",
@@ -153,6 +165,16 @@ def inject(template, calc, out):
     else:
         wb = wb.replace("</workbook>", '<calcPr fullCalcOnLoad="1"/></workbook>')
     files["xl/workbook.xml"] = wb.encode("utf-8")
+    # keep the document properties' sheet list in step with the workbook
+    names = re.findall(r'<sheet\b[^>]*name="([^"]+)"', wb)
+    if "docProps/app.xml" in files:
+        app = files["docProps/app.xml"].decode("utf-8")
+        app = re.sub(r"(<vt:lpstr>Worksheets</vt:lpstr></vt:variant><vt:variant><vt:i4>)\d+(</vt:i4>)",
+                     lambda m: f"{m.group(1)}{len(names)}{m.group(2)}", app)
+        app = re.sub(r"<TitlesOfParts>.*?</TitlesOfParts>",
+                     f'<TitlesOfParts><vt:vector size="{len(names)}" baseType="lpstr">'
+                     + "".join(f"<vt:lpstr>{n}</vt:lpstr>" for n in names) + "</vt:vector></TitlesOfParts>", app, flags=re.S)
+        files["docProps/app.xml"] = app.encode("utf-8")
     files["xl/_rels/workbook.xml.rels"] = rels.encode("utf-8")
     files["[Content_Types].xml"] = ct.encode("utf-8")
     # calcChain lists only existing formula cells; drop it so Excel rebuilds it cleanly

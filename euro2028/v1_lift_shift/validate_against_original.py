@@ -25,6 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import build_calc_pages as B  # noqa: E402
 import layout_v1 as LY  # noqa: E402
+from swap_headers import PERM  # noqa: E402  original day-first column -> new risk-first column
 
 OLD_MD, OLD_WT = "MD Resource Collection Survey", "WT Resource Collection Survey"
 OLD_CFG = {10: 7, 13: 10, 19: 13, 22: 16, 28: 19, 31: 22, 37: 25, 40: 28}          # old first row -> new first row
@@ -120,7 +121,7 @@ def main(orig, new, work):
     wb = openpyxl.load_workbook(new)
     for old_r, new_r in md_map.items():
         for c in range(4, 40):
-            wb[LY.MD_SHEET].cell(new_r, c).value = oldv[OLD_MD].cell(old_r, c).value
+            wb[LY.MD_SHEET].cell(new_r, PERM[c]).value = oldv[OLD_MD].cell(old_r, c).value
     for old_r, new_r in wt_map.items():
         for c in range(4, 16):
             wb[LY.WT_SHEET].cell(new_r, c).value = oldv[OLD_WT].cell(old_r, c).value

@@ -147,7 +147,7 @@ def wt_lines(t):
 # Cost Calculator (survey layout: MD rows = survey rows; WT rows = survey row + WT_CC_OFFSET)
 # ---------------------------------------------------------------------------
 WT_CC_OFFSET = 345
-MD_XH_COLS = [L(LY.DAY_BASE[d] + 3 * s + 2) for d in ("MD-2", "MD-1", "MD", "MD+1") for s in range(3)]
+MD_XH_COLS = [L(LY.md_col(d, s, 2)) for d in ("MD-2", "MD-1", "MD", "MD+1") for s in range(3)]
 WT_XH_COLS = [L(4 + 3 * s + 2) for s in range(4)]
 
 
@@ -232,7 +232,7 @@ def cost_col(k, s):
 
 
 def survey_num(day, s, r):
-    return f"{MDS}!${L(LY.DAY_BASE[day] + 3 * s)}${r}"
+    return f"{MDS}!${L(LY.md_col(day, s, 0))}${r}"
 
 
 CC_COL = {d: [L(4 + 3 * i + s) for s in range(3)] for i, d in enumerate(["MD-2", "MD-1", "MD", "MD+1"])}
