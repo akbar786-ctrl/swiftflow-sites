@@ -1,0 +1,54 @@
+// =====================================================================================
+// EURO 2028 - DAX measures. Create a table called "Measures" (Enter data, one blank column)
+// and add each measure below to it (Modelling > New measure). Format money measures as £.
+//
+// "Officer deployments" = officers x days (one officer working three days counts 3).
+// MD figures are for ONE fixture of each risk level unless they come from Calendar_Fact.
+// Cost "original basis" = overtime (Extra hrs) + mutual aid PSU / Serial packages, as the
+// original collection workbook. Normal duty cost is shown separately.
+// =====================================================================================
+
+// ---------- Match Day: one fixture at each risk level (MD_Fact)
+MD Officer Deployments = SUM ( MD_Fact[Officers] )
+MD PSUs Serials = SUM ( MD_Fact[PSUs / Serials] )
+MD Peak Day Officers = MAXX ( VALUES ( DimDay[Day] ), [MD Officer Deployments] )
+MD Extra Hours = SUM ( MD_Fact[Extra hours total] )
+MD Normal Hours = SUM ( MD_Fact[Normal hours total] )
+MD Overtime Cost = SUM ( MD_Fact[Overtime cost] )
+MD Mutual Aid PSU Cost = SUM ( MD_Fact[Mutual aid PSU cost] )
+MD Normal Duty Cost = SUM ( MD_Fact[Normal duty cost] )
+MD Cost (Original Basis) = [MD Overtime Cost] + [MD Mutual Aid PSU Cost]
+MD Cost incl Normal Duty = [MD Cost (Original Basis)] + [MD Normal Duty Cost]
+MD Mutual Aid Share of Officers =
+    DIVIDE (
+        CALCULATE ( [MD Officer Deployments], MD_Fact[Supplied by] = "Mutual aid" ),
+        [MD Officer Deployments]
+    )
+
+// ---------- Match Day on the fixture calendar (Calendar_Fact - needs the fixture list)
+Calendar Officer Deployments = SUM ( Calendar_Fact[Officers] )
+Calendar PSUs Serials = SUM ( Calendar_Fact[PSUs / Serials] )
+Calendar Overtime Cost = SUM ( Calendar_Fact[Overtime cost] )
+Calendar Mutual Aid PSU Cost = SUM ( Calendar_Fact[Mutual aid PSU cost] )
+Calendar Normal Duty Cost = SUM ( Calendar_Fact[Normal duty cost] )
+Calendar Cost (Original Basis) = [Calendar Overtime Cost] + [Calendar Mutual Aid PSU Cost]
+Calendar Cost incl Normal Duty = [Calendar Cost (Original Basis)] + [Calendar Normal Duty Cost]
+Calendar Peak Day Officers = MAXX ( VALUES ( DimDate[Date] ), [Calendar Officer Deployments] )
+
+// ---------- Wider Tournament (WT_Fact)
+WT Daily Officers = SUM ( WT_Fact[Officers] )
+WT Daily Cost (Original Basis) = SUM ( WT_Fact[Overtime cost] ) + SUM ( WT_Fact[Mutual aid PSU cost] )
+WT Officer Days (Tournament) = SUM ( WT_Fact[Officer days (tournament)] )
+WT Overtime Cost (Tournament) = SUM ( WT_Fact[Overtime cost (tournament)] )
+WT Mutual Aid PSU Cost (Tournament) = SUM ( WT_Fact[Mutual aid PSU cost (tournament)] )
+WT Normal Duty Cost (Tournament) = SUM ( WT_Fact[Normal duty cost (tournament)] )
+WT Cost (Original Basis) = [WT Overtime Cost (Tournament)] + [WT Mutual Aid PSU Cost (Tournament)]
+WT Cost incl Normal Duty = [WT Cost (Original Basis)] + [WT Normal Duty Cost (Tournament)]
+
+// ---------- Whole tournament (fixture calendar + wider tournament)
+Tournament Cost (Original Basis) = [Calendar Cost (Original Basis)] + [WT Cost (Original Basis)]
+Tournament Cost incl Normal Duty = [Calendar Cost incl Normal Duty] + [WT Cost incl Normal Duty]
+
+// ---------- Data quality and coverage
+Issues to Chase = COUNTROWS ( DataQuality ) + 0
+Forces Returned = DISTINCTCOUNT ( MD_Fact[Force] )

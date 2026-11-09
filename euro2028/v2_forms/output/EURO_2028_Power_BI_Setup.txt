@@ -1,0 +1,431 @@
+EURO 2028 - POWER BI SET-UP                                                      OFFICIAL
+================================================================================
+
+WHAT YOU NEED
+  1. A folder holding the forces' completed forms (EURO_2028_Resource_Collection_Form.xlsx,
+     one file per force, any file names).
+  2. EURO_2028_Reference_Data.xlsx (rates, mutual aid PSU package, Wider Tournament days,
+     fixture list). Keep it OUTSIDE the returns folder.
+
+TO TEST FIRST: put the three files from samples\returns in a folder, use
+EURO_2028_Reference_Data_SAMPLE.xlsx as the reference file, and compare your visuals with
+EXPECTED_Power_BI_results_SAMPLE.xlsx. Every figure should match.
+
+STEP 1 - CREATE THE QUERIES
+  Power BI Desktop > Home > Transform data (opens Power Query).
+  For EACH query below, in order:
+    Home > New Source > Blank Query, then Home > Advanced Editor,
+    delete what is there, paste the query text (everything between the ===== lines),
+    click Done, then rename the query (right-click > Rename) to the name shown.
+  For the two parameters (ReturnsFolder, ReferenceFile) change the path in quotes to your own.
+  Queries marked "do not load": right-click > untick "Enable load".
+
+STEP 2 - CLOSE & APPLY
+  Home > Close & Apply. Then check the DataQuality table: every row is something to chase
+  with a force (blank rank, text typed in a number cell, a force on the fixture list with no
+  return, ...). Empty = clean.
+
+STEP 3 - RELATIONSHIPS (Model view, drag column onto column, all "many to one", single direction)
+  MD_Fact[Force]         -> DimForce[Force]       MD_Fact[Risk]   -> DimRisk[Risk]
+  MD_Fact[Day]           -> DimDay[Day]
+  WT_Fact[Force]         -> DimForce[Force]       WT_Fact[Risk]   -> DimRisk[Risk]
+  Calendar_Fact[Force]   -> DimForce[Force]       Calendar_Fact[Risk] -> DimRisk[Risk]
+  Calendar_Fact[Day]     -> DimDay[Day]           Calendar_Fact[Calendar date] -> DimDate[Date]
+  Sort columns: DimRisk[Risk] by [Risk order]; DimDay[Day] and [Day name] by [Day order]
+  (select the column > Column tools > Sort by column).
+
+STEP 4 - MEASURES
+  Home > Enter data > name the table "Measures" > Load. Then for each measure at the end of
+  this file: select the Measures table > New measure > paste ONE line (name = formula).
+  Format the cost measures as Currency (GBP), 0 decimals.
+
+STEP 5 - SUGGESTED PAGES
+  Overview      cards: Forces Returned, Tournament Cost (Original Basis), MD Cost (Original Basis)
+                (pick a Risk on a slicer), WT Cost (Original Basis), Issues to Chase.
+  Match Day     matrix rows DimForce[Force], columns DimRisk[Risk], values MD Cost (Original Basis);
+                bar chart MD Officer Deployments by MD_Fact[Section]; slicers Risk, Supplied by, Rank,
+                Role / Skill.
+  Calendar      line/column chart DimDate[Date] x Calendar Officer Deployments and
+                Calendar Cost (Original Basis); matrix Force x Date.
+  Wider Tourn.  matrix Force x Risk: WT Daily Officers, WT Cost (Original Basis).
+  Data quality  table visual of DataQuality.
+
+HOW THE CALCULATIONS WORK (same rules as the original collection workbook)
+  * Officers on a line = number of officers; hours are per officer.
+  * Overtime cost = Officers x Extra hrs x hourly rate for the line's Supplied by + Rank
+    (Rates table; a Rate overrides line wins for a specific resource).
+  * Force supplied Inspector and above are not costed (rate 0) - original rule; change the
+    Rates table if that should change. In Stadium PSU Inspectors use the mutual aid
+    Inspector rate (Rate overrides) - original rule.
+  * Mutual aid PSUs / Serials: number of units x package per unit per day (Settings).
+  * Normal duty cost (Officers x Normal hrs x rate) is shown separately; "Original Basis"
+    totals leave it out, "incl Normal Duty" totals include it.
+  * MD figures are for ONE fixture at each risk level. The Calendar uses the fixture list:
+    MD-2..MD+1 land on the dates around each fixture; when a force has two fixture-days on
+    the same date and risk level, one is used: Match Day > MD-1 > MD-2 > MD+1 (non-matchday
+    PSU lines: MD-1 > MD-2 > MD+1).
+  * Wider Tournament total = typical-day figure x days at that risk level (WT days table).
+  * "Officer deployments" counts officers x days.
+
+================================================================================
+===== QUERY: ReturnsFolder   (parameter) ============================
+// Query name: ReturnsFolder   (parameter)
+// The folder holding the forces' completed forms (.xlsx). Change the path to your own folder.
+"C:\EURO2028\Returns\" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+
+===== QUERY: ReferenceFile   (parameter) ============================
+// Query name: ReferenceFile   (parameter)
+// Full path of EURO_2028_Reference_Data.xlsx (rates, PSU package, WT days, fixtures).
+"C:\EURO2028\EURO_2028_Reference_Data.xlsx" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+
+===== QUERY: fnFormLong   (do not load) =============================
+// Query name: fnFormLong   (function - do not load)
+// Reads one force's form and returns one row per filled-in cell:
+//   Force, Source file, Form row, Section, Resource, Supplied by, Role / Skill, Rank, Risk, Day, Measure, Raw, Value
+// TableName: "tblMatchDay" (MD Collection page) or "tblWiderTournament" (WT Collection page).
+(Content as binary, FileName as text, TableName as text) as table =>
+let
+    Book = Excel.Workbook(Content, null, true),
+    DetailsRows = Table.SelectRows(Book, each [Kind] = "Table" and [Item] = "tblDetails"),
+    Details = if Table.RowCount(DetailsRows) = 0 then null else DetailsRows{0}[Data],
+    TypedForce = if Details = null or Table.RowCount(Details) = 0 then null else Record.FieldOrDefault(Details{0}, "Force", null),
+    ForceText = if TypedForce = null then "" else Text.Trim(Text.From(TypedForce)),
+    // if the force name was left blank, use the file name
+    Force = if ForceText = "" then Text.BeforeDelimiter(FileName, ".", {0, RelativePosition.FromEnd}) else ForceText,
+    DataRows = Table.SelectRows(Book, each [Kind] = "Table" and [Item] = TableName),
+    Data = if Table.RowCount(DataRows) = 0
+        then error Error.Record("Not a collection form", "Table " & TableName & " was not found in " & FileName)
+        else DataRows{0}[Data],
+    KeyCols = {"Section", "Resource", "Supplied by", "Role / Skill", "Rank"},
+    ValueCols = List.Select(Table.ColumnNames(Data), each Text.Contains(_, " | ")),
+    Slim = Table.SelectColumns(Data, KeyCols & ValueCols),
+    // "Form row" numbers each line of the form (1 = first line under the headings), so two lines with the
+    // same resource / role / rank are never merged
+    Indexed = Table.AddIndexColumn(Slim, "Form row", 1, 1, Int64.Type),
+    // one row per filled-in cell (blank cells are dropped)
+    Long = Table.UnpivotOtherColumns(Indexed, KeyCols & {"Form row"}, "Attribute", "Raw"),
+    Parts = Table.AddColumn(Long, "Parts", each Text.Split([Attribute], " | ")),
+    Risk = Table.AddColumn(Parts, "Risk", each [Parts]{0}, type text),
+    Day = Table.AddColumn(Risk, "Day", each if List.Count([Parts]) = 3 then [Parts]{1} else "WT", type text),
+    Measure = Table.AddColumn(Day, "Measure", each List.Last([Parts]), type text),
+    Value = Table.AddColumn(Measure, "Value", each try Number.From([Raw]) otherwise null, type nullable number),
+    RawText = Table.TransformColumns(Value, {{"Raw", each if _ = null then null else Text.From(_), type nullable text}}),
+    WithForce = Table.AddColumn(RawText, "Force", each Force, type text),
+    WithFile = Table.AddColumn(WithForce, "Source file", each FileName, type text),
+    Result = Table.SelectColumns(WithFile,
+        {"Force", "Source file", "Form row"} & KeyCols & {"Risk", "Day", "Measure", "Raw", "Value"}),
+    Typed = Table.TransformColumnTypes(Result, {
+        {"Section", type text}, {"Resource", type text}, {"Supplied by", type text},
+        {"Role / Skill", type text}, {"Rank", type text}})
+in
+    Typed
+
+===== QUERY: Returns   (do not load) ================================
+// Query name: Returns   (do not load)
+// Every completed form in ReturnsFolder (Excel temporary "~$" files are ignored).
+let
+    Files = Folder.Files(ReturnsFolder),
+    Xlsx = Table.SelectRows(Files, each Text.Lower([Extension]) = ".xlsx" and not Text.StartsWith([Name], "~$")),
+    Kept = Table.SelectColumns(Xlsx, {"Name", "Content", "Date modified"})
+in
+    Kept
+
+===== QUERY: MD_Long   (do not load) ================================
+// Query name: MD_Long   (do not load)
+// All forces' MD Collection pages, one row per filled-in cell.
+let
+    Read = Table.AddColumn(Returns, "Rows", each try fnFormLong([Content], [Name], "tblMatchDay") otherwise null),
+    Ok = Table.SelectRows(Read, each [Rows] <> null),
+    Combined = if Table.RowCount(Ok) = 0 then null else Table.Combine(Ok[Rows])
+in
+    Combined
+
+===== QUERY: WT_Long   (do not load) ================================
+// Query name: WT_Long   (do not load)
+// All forces' WT Collection pages, one row per filled-in cell.
+let
+    Read = Table.AddColumn(Returns, "Rows", each try fnFormLong([Content], [Name], "tblWiderTournament") otherwise null),
+    Ok = Table.SelectRows(Read, each [Rows] <> null),
+    Combined = if Table.RowCount(Ok) = 0 then null else Table.Combine(Ok[Rows])
+in
+    Combined
+
+===== QUERY: Ref_Rates   (do not load) ==============================
+// Query name: Ref_Rates   (do not load)
+let
+    Book = Excel.Workbook(File.Contents(ReferenceFile), null, true),
+    T = Book{[Item = "tblRates", Kind = "Table"]}[Data],
+    Typed = Table.TransformColumnTypes(T, {{"Supplied by", type text}, {"Rank", type text}, {"Hourly rate", type number}}),
+    Kept = Table.SelectRows(Typed, each [Rank] <> null and [Hourly rate] <> null)
+in
+    Table.SelectColumns(Kept, {"Supplied by", "Rank", "Hourly rate"})
+
+===== QUERY: Ref_RateOverrides   (do not load) ======================
+// Query name: Ref_RateOverrides   (do not load)
+let
+    Book = Excel.Workbook(File.Contents(ReferenceFile), null, true),
+    T = Book{[Item = "tblRateOverrides", Kind = "Table"]}[Data],
+    Typed = Table.TransformColumnTypes(T, {{"Resource", type text}, {"Supplied by", type text}, {"Rank", type text}, {"Hourly rate", type number}}),
+    Kept = Table.SelectRows(Typed, each [Resource] <> null and [Hourly rate] <> null)
+in
+    Table.RenameColumns(Table.SelectColumns(Kept, {"Resource", "Supplied by", "Rank", "Hourly rate"}), {{"Hourly rate", "Override rate"}})
+
+===== QUERY: Ref_Settings   (do not load) ===========================
+// Query name: Ref_Settings   (do not load)
+let
+    Book = Excel.Workbook(File.Contents(ReferenceFile), null, true),
+    T = Book{[Item = "tblSettings", Kind = "Table"]}[Data]
+in
+    Table.TransformColumnTypes(T, {{"Key", type text}, {"Setting", type text}, {"Value", type number}})
+
+===== QUERY: Ref_WTDays   (do not load) =============================
+// Query name: Ref_WTDays   (do not load)
+let
+    Book = Excel.Workbook(File.Contents(ReferenceFile), null, true),
+    T = Book{[Item = "tblWTDays", Kind = "Table"]}[Data]
+in
+    Table.SelectRows(Table.TransformColumnTypes(T, {{"Risk", type text}, {"Days", type number}}), each [Risk] <> null)
+
+===== QUERY: Ref_Fixtures   (do not load) ===========================
+// Query name: Ref_Fixtures   (do not load)
+let
+    Book = Excel.Workbook(File.Contents(ReferenceFile), null, true),
+    T = Book{[Item = "tblFixtures", Kind = "Table"]}[Data],
+    Kept = Table.SelectRows(T, each [Date] <> null and [Risk] <> null and [Force] <> null),
+    Typed = Table.TransformColumns(Kept, {
+        {"Fixture", each if _ = null then "" else Text.From(_), type text},
+        {"Date", each Date.From(_), type date},
+        {"Risk", each Text.Trim(Text.From(_)), type text},
+        {"Force", each Text.Trim(Text.From(_)), type text}})
+in
+    Typed
+
+===== QUERY: MD_Fact   (LOAD) =======================================
+// Query name: MD_Fact   (LOAD)
+// One row per Force / line on the form / Risk / Day, with officers, hours and costs.
+// Costing follows the original collection workbook:
+//   overtime cost   = Officers x Extra hrs x hourly rate (rank + supplied by, or a resource override)
+//   normal duty cost = Officers x Normal hrs x hourly rate (shown separately)
+//   mutual aid PSU / Serial = number of units x package per unit per day
+let
+    Filled = Table.SelectRows(MD_Long, each [Value] <> null and [Value] <> 0),
+    Slim = Table.RemoveColumns(Filled, {"Raw"}),
+    Wide = Table.Pivot(Slim, {"Officers", "Normal hrs", "Extra hrs"}, "Measure", "Value", List.Sum),
+    Units = Table.AddColumn(Wide, "Is units line", each [Rank] = "Number of PSUs / Serials", type logical),
+    PSUs = Table.AddColumn(Units, "PSUs / Serials", each if [Is units line] then ([Officers] ?? 0) else 0, type number),
+    Officers = Table.AddColumn(PSUs, "Officer count", each if [Is units line] then 0 else ([Officers] ?? 0), type number),
+    Hours = Table.TransformColumns(Officers, {{"Normal hrs", each _ ?? 0, type number}, {"Extra hrs", each _ ?? 0, type number}}),
+    Renamed = Table.RenameColumns(Table.RemoveColumns(Hours, {"Officers"}), {{"Officer count", "Officers"}}),
+    // hourly rate: resource override first, otherwise rank + supplied by
+    WithOverride = Table.NestedJoin(Renamed, {"Resource", "Supplied by", "Rank"}, Ref_RateOverrides, {"Resource", "Supplied by", "Rank"}, "Ovr", JoinKind.LeftOuter),
+    WithBase = Table.NestedJoin(WithOverride, {"Supplied by", "Rank"}, Ref_Rates, {"Supplied by", "Rank"}, "Base", JoinKind.LeftOuter),
+    Rate = Table.AddColumn(WithBase, "Hourly rate", each
+        if Table.RowCount([Ovr]) > 0 then [Ovr]{0}[Override rate]
+        else if Table.RowCount([Base]) > 0 then [Base]{0}[Hourly rate]
+        else null, type nullable number),
+    NoJoins = Table.RemoveColumns(Rate, {"Ovr", "Base"}),
+    Package = Ref_Settings{[Key = "MA_PSU_PACKAGE"]}[Value],
+    ExtraHours = Table.AddColumn(NoJoins, "Extra hours total", each [Officers] * [Extra hrs], type number),
+    NormalHours = Table.AddColumn(ExtraHours, "Normal hours total", each [Officers] * [Normal hrs], type number),
+    Overtime = Table.AddColumn(NormalHours, "Overtime cost", each [Extra hours total] * ([Hourly rate] ?? 0), type number),
+    NormalCost = Table.AddColumn(Overtime, "Normal duty cost", each [Normal hours total] * ([Hourly rate] ?? 0), type number),
+    PSUCost = Table.AddColumn(NormalCost, "Mutual aid PSU cost", each
+        if [Is units line] and [Supplied by] = "Mutual aid" then [#"PSUs / Serials"] * Package else 0, type number),
+    // lines for days other than Match Day follow a different day rule on the fixture calendar (original workbook)
+    RowType = Table.AddColumn(PSUCost, "Row type", each if Text.Contains([Resource] ?? "", "(Non-Matchday)") then "NON_MD" else "STD", type text),
+    Typed = Table.TransformColumnTypes(RowType, {{"Risk", type text}, {"Day", type text}, {"Force", type text}})
+in
+    Typed
+
+===== QUERY: WT_Fact   (LOAD) =======================================
+// Query name: WT_Fact   (LOAD)
+// One row per Force / line on the form / Risk for a typical Wider Tournament day,
+// plus tournament totals = daily figure x number of days at that risk level (Ref_WTDays).
+let
+    Filled = Table.SelectRows(WT_Long, each [Value] <> null and [Value] <> 0),
+    Slim = Table.RemoveColumns(Filled, {"Raw", "Day"}),
+    Wide = Table.Pivot(Slim, {"Officers", "Normal hrs", "Extra hrs"}, "Measure", "Value", List.Sum),
+    Units = Table.AddColumn(Wide, "Is units line", each [Rank] = "Number of PSUs / Serials", type logical),
+    PSUs = Table.AddColumn(Units, "PSUs / Serials", each if [Is units line] then ([Officers] ?? 0) else 0, type number),
+    Officers = Table.AddColumn(PSUs, "Officer count", each if [Is units line] then 0 else ([Officers] ?? 0), type number),
+    Hours = Table.TransformColumns(Officers, {{"Normal hrs", each _ ?? 0, type number}, {"Extra hrs", each _ ?? 0, type number}}),
+    Renamed = Table.RenameColumns(Table.RemoveColumns(Hours, {"Officers"}), {{"Officer count", "Officers"}}),
+    WithOverride = Table.NestedJoin(Renamed, {"Resource", "Supplied by", "Rank"}, Ref_RateOverrides, {"Resource", "Supplied by", "Rank"}, "Ovr", JoinKind.LeftOuter),
+    WithBase = Table.NestedJoin(WithOverride, {"Supplied by", "Rank"}, Ref_Rates, {"Supplied by", "Rank"}, "Base", JoinKind.LeftOuter),
+    Rate = Table.AddColumn(WithBase, "Hourly rate", each
+        if Table.RowCount([Ovr]) > 0 then [Ovr]{0}[Override rate]
+        else if Table.RowCount([Base]) > 0 then [Base]{0}[Hourly rate]
+        else null, type nullable number),
+    NoJoins = Table.RemoveColumns(Rate, {"Ovr", "Base"}),
+    Package = Ref_Settings{[Key = "MA_PSU_PACKAGE"]}[Value],
+    ExtraHours = Table.AddColumn(NoJoins, "Extra hours total", each [Officers] * [Extra hrs], type number),
+    NormalHours = Table.AddColumn(ExtraHours, "Normal hours total", each [Officers] * [Normal hrs], type number),
+    Overtime = Table.AddColumn(NormalHours, "Overtime cost", each [Extra hours total] * ([Hourly rate] ?? 0), type number),
+    NormalCost = Table.AddColumn(Overtime, "Normal duty cost", each [Normal hours total] * ([Hourly rate] ?? 0), type number),
+    PSUCost = Table.AddColumn(NormalCost, "Mutual aid PSU cost", each
+        if [Is units line] and [Supplied by] = "Mutual aid" then [#"PSUs / Serials"] * Package else 0, type number),
+    WithDays = Table.NestedJoin(PSUCost, {"Risk"}, Ref_WTDays, {"Risk"}, "WTDays", JoinKind.LeftOuter),
+    Days = Table.AddColumn(WithDays, "Days at risk level", each if Table.RowCount([WTDays]) > 0 then [WTDays]{0}[Days] else 0, type number),
+    NoDays = Table.RemoveColumns(Days, {"WTDays"}),
+    TOfficers = Table.AddColumn(NoDays, "Officer days (tournament)", each [Officers] * [Days at risk level], type number),
+    TOvertime = Table.AddColumn(TOfficers, "Overtime cost (tournament)", each [Overtime cost] * [Days at risk level], type number),
+    TNormal = Table.AddColumn(TOvertime, "Normal duty cost (tournament)", each [Normal duty cost] * [Days at risk level], type number),
+    TPSU = Table.AddColumn(TNormal, "Mutual aid PSU cost (tournament)", each [Mutual aid PSU cost] * [Days at risk level], type number),
+    Typed = Table.TransformColumnTypes(TPSU, {{"Risk", type text}, {"Force", type text}})
+in
+    Typed
+
+===== QUERY: Calendar_Fact   (LOAD) =================================
+// Query name: Calendar_Fact   (LOAD)
+// Places each force's Match Day figures on real dates using the fixture list (Ref_Fixtures).
+// For every fixture: MD-2 = date - 2, MD-1 = date - 1, MD = date, MD+1 = date + 1.
+// When one force has more than one fixture-day on the same date at the same risk level, ONE day is used
+// (original workbook rule): Match Day > MD-1 > MD-2 > MD+1; lines for days other than Match Day use
+// MD-1 > MD-2 > MD+1.
+let
+    Offsets = #table(
+        type table [Day = text, Offset = number, Priority = number, PriorityNonMD = nullable number],
+        {{"MD-2", -2, 3, 2}, {"MD-1", -1, 2, 1}, {"MD", 0, 1, null}, {"MD+1", 1, 4, 3}}),
+    WithOffsets = Table.AddColumn(Ref_Fixtures, "Rel", each Offsets),
+    Expanded = Table.ExpandTableColumn(WithOffsets, "Rel", {"Day", "Offset", "Priority", "PriorityNonMD"}),
+    Dated = Table.AddColumn(Expanded, "Calendar date", each Date.AddDays([Date], [Offset]), type date),
+    Grouped = Table.Group(Dated, {"Force", "Calendar date", "Risk"}, {
+        {"STD", each Table.Sort(_, {{"Priority", Order.Ascending}}){0}[Day], type text},
+        {"NON_MD", each
+            let NonMD = Table.SelectRows(_, each [PriorityNonMD] <> null)
+            in if Table.RowCount(NonMD) = 0 then null else Table.Sort(NonMD, {{"PriorityNonMD", Order.Ascending}}){0}[Day],
+            type nullable text},
+        {"Fixtures", each Text.Combine(List.Sort(List.Distinct([Fixture])), ", "), type text}}),
+    Std = Table.AddColumn(Table.RenameColumns(Table.SelectColumns(Grouped, {"Force", "Calendar date", "Risk", "STD", "Fixtures"}), {{"STD", "Day"}}), "Row type", each "STD", type text),
+    NonMDRows = Table.SelectRows(Grouped, each [NON_MD] <> null),
+    NonMD = Table.AddColumn(Table.RenameColumns(Table.SelectColumns(NonMDRows, {"Force", "Calendar date", "Risk", "NON_MD", "Fixtures"}), {{"NON_MD", "Day"}}), "Row type", each "NON_MD", type text),
+    Lookup = Table.Combine({Std, NonMD}),
+    Joined = Table.NestedJoin(MD_Fact, {"Force", "Risk", "Day", "Row type"}, Lookup, {"Force", "Risk", "Day", "Row type"}, "Cal", JoinKind.Inner),
+    Result = Table.ExpandTableColumn(Joined, "Cal", {"Calendar date", "Fixtures"})
+in
+    Result
+
+===== QUERY: DataQuality   (LOAD) ===================================
+// Query name: DataQuality   (LOAD)
+// Things to chase with forces before trusting the figures. Empty = nothing to chase.
+let
+    NotForms = Table.SelectRows(
+        Table.AddColumn(Returns, "Ok", each (try fnFormLong([Content], [Name], "tblMatchDay"))[HasError] = false),
+        each not [Ok]),
+    NotFormIssues = Table.FromRecords(List.Transform(NotForms[Name], each [Force = null, #"Source file" = _, Page = "-",
+        Line = "-", Issue = "File is not a EURO 2028 collection form (no MD Collection table)"]),
+        type table [Force = nullable text, #"Source file" = text, Page = text, Line = text, Issue = text]),
+    LongAll = Table.Combine({
+        Table.AddColumn(MD_Long, "Page", each "MD Collection", type text),
+        Table.AddColumn(WT_Long, "Page", each "WT Collection", type text)}),
+    LineText = (r as record) as text => Text.Combine(List.Select({r[Section], r[Resource], r[#"Supplied by"], r[#"Role / Skill"], r[Rank]}, each _ <> null and _ <> "" and _ <> "-"), " / "),
+    NotNumber = Table.SelectRows(LongAll, each [Raw] <> null and [Value] = null),
+    NotNumberIssues = Table.AddColumn(NotNumber, "Issue", each "Not a number in '" & [Risk] & " " & [Day] & " " & [Measure] & "': " & [Raw], type text),
+    Filled = Table.SelectRows(LongAll, each [Value] <> null and [Value] <> 0),
+    Lines = Table.Distinct(Table.SelectColumns(Filled, {"Force", "Source file", "Page", "Form row", "Section", "Resource", "Supplied by", "Role / Skill", "Rank"})),
+    MissingIssues = Table.SelectRows(Table.AddColumn(Lines, "Issue", each
+        if [Rank] = null or [Rank] = "" then "Numbers entered but no Rank chosen"
+        else if [Resource] = null or [Resource] = "" then "Numbers entered but no Resource given"
+        else if [#"Supplied by"] = null or [#"Supplied by"] = "" then "Numbers entered but Supplied by not chosen"
+        else if [#"Role / Skill"] = null or [#"Role / Skill"] = "" then "Numbers entered but no Role / Skill (or unit type) chosen"
+        else null, type nullable text), each [Issue] <> null),
+    Hours = Table.SelectRows(Filled, each [Measure] <> "Officers" and [Value] > 24),
+    HoursIssues = Table.AddColumn(Hours, "Issue", each "More than 24 hours per officer in '" & [Risk] & " " & [Day] & " " & [Measure] & "'", type text),
+    NoRate = Table.SelectRows(Table.Combine({
+        Table.AddColumn(MD_Fact, "Page", each "MD Collection", type text),
+        Table.AddColumn(WT_Fact, "Page", each "WT Collection", type text)}), each [Officers] > 0 and [Hourly rate] = null),
+    NoRateIssues = Table.AddColumn(Table.Distinct(Table.SelectColumns(NoRate, {"Force", "Source file", "Page", "Form row", "Section", "Resource", "Supplied by", "Role / Skill", "Rank"})),
+        "Issue", each "No hourly rate for " & ([#"Supplied by"] ?? "?") & " / " & ([Rank] ?? "?") & " - add it to tblRates", type text),
+    Shape = (t as table) as table => Table.SelectColumns(Table.AddColumn(t, "Line", each "Row " & Text.From([#"Form row"]) & ": " & LineText(_), type text), {"Force", "Source file", "Page", "Line", "Issue"}),
+    FixtureForces = List.Distinct(Ref_Fixtures[Force]),
+    KnownForces = List.Distinct(MD_Fact[Force]),
+    UnknownFixtureForces = List.Select(FixtureForces, each not List.Contains(KnownForces, _)),
+    FixtureIssues = Table.FromRecords(List.Transform(UnknownFixtureForces, each [Force = _, #"Source file" = "Reference data",
+        Page = "Fixtures", Line = "-", Issue = "Force on the fixture list has no Match Day figures (check the spelling matches the form)"]),
+        type table [Force = nullable text, #"Source file" = text, Page = text, Line = text, Issue = text]),
+    All = Table.Combine({NotFormIssues, Shape(NotNumberIssues), Shape(MissingIssues), Shape(HoursIssues), Shape(NoRateIssues), FixtureIssues})
+in
+    All
+
+===== QUERY: DimRisk   (LOAD) =======================================
+// Query name: DimRisk
+#table(type table [Risk = text, #"Risk order" = Int64.Type], {{"Low", 1}, {"Medium", 2}, {"High", 3}, {"Super High", 4}})
+
+===== QUERY: DimDay   (LOAD) ========================================
+// Query name: DimDay
+#table(type table [Day = text, #"Day name" = text, #"Day order" = Int64.Type],
+    {{"MD-2", "Match Day -2", 1}, {"MD-1", "Match Day -1", 2}, {"MD", "Match Day", 3}, {"MD+1", "Match Day +1", 4}})
+
+===== QUERY: DimForce   (LOAD) ======================================
+// Query name: DimForce
+let
+    Names = List.Distinct(List.Combine({MD_Fact[Force], WT_Fact[Force], Ref_Fixtures[Force]}))
+in
+    Table.Sort(Table.FromList(List.Select(Names, each _ <> null), Splitter.SplitByNothing(), type table [Force = text]), {{"Force", Order.Ascending}})
+
+===== QUERY: DimDate   (LOAD) =======================================
+// Query name: DimDate
+let
+    Start = #date(2028, 6, 1),
+    Dates = List.Dates(Start, 61, #duration(1, 0, 0, 0)),
+    T = Table.FromList(Dates, Splitter.SplitByNothing(), type table [Date = date]),
+    DayName = Table.AddColumn(T, "Day", each Date.ToText([Date], "ddd dd MMM"), type text),
+    Week = Table.AddColumn(DayName, "Week starting", each Date.StartOfWeek([Date], Day.Monday), type date)
+in
+    Week
+
+===== DAX MEASURES ============================================================
+// =====================================================================================
+// EURO 2028 - DAX measures. Create a table called "Measures" (Enter data, one blank column)
+// and add each measure below to it (Modelling > New measure). Format money measures as £.
+//
+// "Officer deployments" = officers x days (one officer working three days counts 3).
+// MD figures are for ONE fixture of each risk level unless they come from Calendar_Fact.
+// Cost "original basis" = overtime (Extra hrs) + mutual aid PSU / Serial packages, as the
+// original collection workbook. Normal duty cost is shown separately.
+// =====================================================================================
+
+// ---------- Match Day: one fixture at each risk level (MD_Fact)
+MD Officer Deployments = SUM ( MD_Fact[Officers] )
+MD PSUs Serials = SUM ( MD_Fact[PSUs / Serials] )
+MD Peak Day Officers = MAXX ( VALUES ( DimDay[Day] ), [MD Officer Deployments] )
+MD Extra Hours = SUM ( MD_Fact[Extra hours total] )
+MD Normal Hours = SUM ( MD_Fact[Normal hours total] )
+MD Overtime Cost = SUM ( MD_Fact[Overtime cost] )
+MD Mutual Aid PSU Cost = SUM ( MD_Fact[Mutual aid PSU cost] )
+MD Normal Duty Cost = SUM ( MD_Fact[Normal duty cost] )
+MD Cost (Original Basis) = [MD Overtime Cost] + [MD Mutual Aid PSU Cost]
+MD Cost incl Normal Duty = [MD Cost (Original Basis)] + [MD Normal Duty Cost]
+MD Mutual Aid Share of Officers =
+    DIVIDE (
+        CALCULATE ( [MD Officer Deployments], MD_Fact[Supplied by] = "Mutual aid" ),
+        [MD Officer Deployments]
+    )
+
+// ---------- Match Day on the fixture calendar (Calendar_Fact - needs the fixture list)
+Calendar Officer Deployments = SUM ( Calendar_Fact[Officers] )
+Calendar PSUs Serials = SUM ( Calendar_Fact[PSUs / Serials] )
+Calendar Overtime Cost = SUM ( Calendar_Fact[Overtime cost] )
+Calendar Mutual Aid PSU Cost = SUM ( Calendar_Fact[Mutual aid PSU cost] )
+Calendar Normal Duty Cost = SUM ( Calendar_Fact[Normal duty cost] )
+Calendar Cost (Original Basis) = [Calendar Overtime Cost] + [Calendar Mutual Aid PSU Cost]
+Calendar Cost incl Normal Duty = [Calendar Cost (Original Basis)] + [Calendar Normal Duty Cost]
+Calendar Peak Day Officers = MAXX ( VALUES ( DimDate[Date] ), [Calendar Officer Deployments] )
+
+// ---------- Wider Tournament (WT_Fact)
+WT Daily Officers = SUM ( WT_Fact[Officers] )
+WT Daily Cost (Original Basis) = SUM ( WT_Fact[Overtime cost] ) + SUM ( WT_Fact[Mutual aid PSU cost] )
+WT Officer Days (Tournament) = SUM ( WT_Fact[Officer days (tournament)] )
+WT Overtime Cost (Tournament) = SUM ( WT_Fact[Overtime cost (tournament)] )
+WT Mutual Aid PSU Cost (Tournament) = SUM ( WT_Fact[Mutual aid PSU cost (tournament)] )
+WT Normal Duty Cost (Tournament) = SUM ( WT_Fact[Normal duty cost (tournament)] )
+WT Cost (Original Basis) = [WT Overtime Cost (Tournament)] + [WT Mutual Aid PSU Cost (Tournament)]
+WT Cost incl Normal Duty = [WT Cost (Original Basis)] + [WT Normal Duty Cost (Tournament)]
+
+// ---------- Whole tournament (fixture calendar + wider tournament)
+Tournament Cost (Original Basis) = [Calendar Cost (Original Basis)] + [WT Cost (Original Basis)]
+Tournament Cost incl Normal Duty = [Calendar Cost incl Normal Duty] + [WT Cost incl Normal Duty]
+
+// ---------- Data quality and coverage
+Issues to Chase = COUNTROWS ( DataQuality ) + 0
+Forces Returned = DISTINCTCOUNT ( MD_Fact[Force] )
