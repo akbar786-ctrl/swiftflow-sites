@@ -58,15 +58,19 @@ def swap(xml):
         rnum = int(m.group(1))
         head, body, tail = m.group(0)[:m.start(2) - m.start(0)], m.group(2), "</row>"
         cells = CELL.findall(body)
+        d3_style = next((re.search(r'\bs="(\d+)"', c) for c in cells if re.search(r'r="D3"', c)), None)
         out = []
         for c in cells:
             ref = re.search(r'r="([A-Z]+)(\d+)"', c)
             col = CI(ref.group(1))
-            if rnum >= 5 and col in PERM:                       # data rows: move the cell
-                c = c.replace(f'r="{ref.group(1)}{rnum}"', f'r="{L(PERM[col])}{rnum}"', 1)
-                col = PERM[col]
-            elif rnum == 3 and 4 <= col <= 39:                  # row 3: risk level banners
+            if rnum >= 4 and col in PERM:                       # row 4 and data rows: move the cell
+                c = c.replace(f'r="{ref.group(1)}{rnum}"', f'r="{L(PERM[col])}{rnum}"', 1)  # (colours follow
+                col = PERM[col]                                                            #  their risk level)
+            if rnum == 3 and 4 <= col <= 39:                    # row 3: risk level banners, styled like D3
                 off = col - 4
+                if d3_style:
+                    c = re.sub(r'\bs="\d+"', f's="{d3_style.group(1)}"', c, count=1) if ' s="' in c else \
+                        c.replace("<c ", f'<c s="{d3_style.group(1)}" ', 1)
                 c = _set_text(c, RISKS[off // 12]) if off % 12 == 0 else _clear(c)
             elif rnum == 4 and 4 <= col <= 39:                  # row 4: day - measure
                 off = col - 4
@@ -152,10 +156,11 @@ def add_super_high(xml):
             if src in cells:
                 c = cells[src].replace(f'r="{L(src)}{rnum}"', f'r="{L(dst)}{rnum}"', 1)
                 cells[dst] = _clear(c)
-        for i in range(12):                                    # Super High inputs styled like High
-            copy(28 + i, SH_FIRST + i)
-        for i in range(3):                                     # Super High totals styled like High totals
-            copy(TOT_FIRST + 6 + i, TOT_FIRST + 9 + i)
+        if rnum >= 3:                                          # (rows 1-2 are the banner)
+            for i in range(12):                                # Super High inputs styled like High
+                copy(28 + i, SH_FIRST + i)
+            for i in range(3):                                 # Super High totals styled like High totals
+                copy(TOT_FIRST + 6 + i, TOT_FIRST + 9 + i)
         if rnum == 3 and SH_FIRST in cells:
             cells[SH_FIRST] = _set_text(cells[SH_FIRST], "Super High")
         if rnum == 4:
