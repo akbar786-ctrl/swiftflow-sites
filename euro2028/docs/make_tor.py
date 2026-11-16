@@ -99,12 +99,13 @@ def build(out=OUT):
     r.bold, r.font.size = True, Pt(16)
     table(doc, ["Item", "Detail"], [
         ["Document", "Terms of Reference - EURO 2028 Resource Forecast Collection and Dashboard"],
-        ["Version", "0.1 DRAFT for review"],
+        ["Version", "0.2 DRAFT for review - aligned with the Full Solution Proposal v1.0"],
         ["Date", dt.date.today().strftime("%d %B %Y")],
         ["Owner", "NPoCC Euro 2028 Police Planning Team - [named lead TBC]"],
         ["Classification", "OFFICIAL"],
-        ["Related documents", "Euro_2028_Question_Prompts KL; Resource Forecast Collection Form (v3); "
-                              "Power BI build guide; Legacy collection workbook audit"],
+        ["Related documents", "EURO 2028 Demand & Resourcing Dashboard - Full Solution Proposal v1.0 "
+                              "(J. Konerska); Euro_2028_Question_Prompts KL; Resource Collection Template (v3); "
+                              "Legacy collection workbook audit"],
     ], widths=[4, 12.5])
 
     # ------------------------------------------------------------- 1 purpose
@@ -114,6 +115,11 @@ def build(out=OUT):
               "They follow the structure of the Euro 2028 Question Prompts document (Context, Schedule, Resourcing, "
               "Budgeting, Other, Existing Dashboards and Models) and show, question by question, how each will be "
               "answered and what is still needed.")
+    para(doc, "The technical design - Microsoft Fabric ingestion, Lakehouse layers, semantic model and calculation "
+              "framework - is set out in the EURO 2028 Demand & Resourcing Dashboard Full Solution Proposal v1.0. "
+              "This ToR adopts that design and summarises it in section 7; it does not repeat its detail. Where the "
+              "proposal and decisions already taken on this project differ, the differences are listed in section 8 "
+              "for resolution.")
 
     # ------------------------------------------------------------- 2 context
     doc.add_heading("2. Context", level=1)
@@ -125,13 +131,15 @@ def build(out=OUT):
     bullets(doc, [
         "A first round of Euro 2028 data collection used an Excel workbook in which forces entered requirements and "
         "a set of hidden background sheets (Demand Sheet, Cost Sheet, Cost Calculator, Fleet and others) calculated "
-        "demand and cost. Two existing products were built from that round (section 8).",
+        "demand and cost. Two existing products were built from that round (section 9).",
         "An audit of that workbook found the calculation logic hard-coded into tens of thousands of cells, with "
         "broken references (#REF!), copy errors, inconsistent rules and a calendar still set to 2025. The figures "
         "were difficult to check, maintain or combine across forces.",
-        "The project replaces this with a simple collection form completed by forces, and moves all processing "
-        "and calculation into Power BI (Power Query and DAX), where the rules are written once, visible and "
-        "testable.",
+        "Submissions from the nine host forces are consolidated manually into a national Excel demand model, which "
+        "limits auditability, version control, security and scenario analysis as planning matures.",
+        "The project keeps a standard force-facing collection template, and moves all ingestion, validation and "
+        "calculation into a governed Microsoft Fabric and Power BI solution - a single source of truth where the "
+        "business rules are written once, visible and testable.",
     ])
 
     # ------------------------------------------------------------ 3 objectives
@@ -144,6 +152,9 @@ def build(out=OUT):
         "regional (where data allows) and national level.",
         "Report data-quality issues so returns can be corrected before figures are used.",
         "Keep the solution maintainable by the NPoCC team without specialist support.",
+        "Support multiple planning iterations, keeping every version of every submission.",
+        "Control access so that each force sees its own data and national teams see all (row-level security).",
+        "Deliver in phases, starting with a proof of concept on a single host force submission.",
     ])
 
     # --------------------------------------------------------------- 4 scope
@@ -152,8 +163,11 @@ def build(out=OUT):
     bullets(doc, [
         "The Resource Forecast Collection Form: two sheets completed by forces - Match Day Resource and Wider "
         "Tournament Resource - plus Guidance.",
-        "Power BI: loading all returns, reshaping them into master tables, reference tables (rates, settings, "
-        "Wider Tournament days, fixture schedule, skillset mapping), DAX measures and report pages.",
+        "A controlled SharePoint Online landing zone for submissions, with version history and submission tracking.",
+        "Microsoft Fabric: Dataflows Gen2 (Power Query) ingestion, validation and standardisation into a Lakehouse "
+        "(Bronze raw files, Silver standardised data, Gold fact and dimension tables).",
+        "A Power BI semantic model with DAX measures and row-level security, and the report pages built on it.",
+        "Reference tables: rates, settings, Wider Tournament days, venues, fixture schedule, Mercury skillset mapping.",
         "Cost and resource breakdowns by force, skillset, section, resource, rank, origin (force supplied / mutual "
         "aid), risk level, relative day and date.",
         "Data-quality reporting, validation against the legacy workbook, and user and build guidance.",
@@ -163,7 +177,7 @@ def build(out=OUT):
         "Changing the legacy collection workbook or the first-round dashboards.",
         "Operational deployment decisions - the dashboard informs planning; it does not allocate resources.",
         "Collecting new data types (e.g. equipment, vehicles, horses, force capacity baselines) until the business "
-        "rules and sources in section 11 are agreed.",
+        "rules and sources in section 12 are agreed.",
     ])
 
     # ---------------------------------------------------------- 5 deliverables
@@ -173,19 +187,22 @@ def build(out=OUT):
          "High x Match Day -2, -1, Match Day, +1 x Officers, Normal Tour of Duty, Extra Hours. Wider Tournament: the "
          "same per risk level for a typical tournament day. Validation on entry, hatched cells where not required, "
          "hidden one-row header for Power BI.", "Built - for review"],
-        ["D2", "Power BI data model", "Power Query reads every return from a folder and builds master tables "
-         "(Match Day, Wider Tournament, Fixture Calendar), dimension tables and a Data Quality table.",
-         "Designed and tested on the previous layout; to be rebuilt step by step for v3"],
+        ["D2", "Fabric ingestion and Lakehouse", "SharePoint landing zone; Dataflows Gen2 validate and standardise "
+         "every submission into Bronze / Silver / Gold layers; fact tables (Match Day Demand, Tournament Demand, "
+         "Fixture Calendar), dimension tables and a Data Quality table.",
+         "Transformation logic designed and tested in Power Query; to be built for v3 in Fabric"],
         ["D3", "Reference tables", "Hourly rates by rank and origin, settings, Wider Tournament days per risk level, "
          "fixture schedule, Mercury skillset mapping.", "Rates and days in place; schedule and skillset mapping "
          "required"],
-        ["D4", "DAX measures", "Officers, officer deployments, hours, overtime cost, normal duty cost, mutual aid "
-         "cost, totals by any dimension.", "Drafted"],
+        ["D4", "Semantic model and DAX measures", "Officers, officer deployments, hours, overtime hours, cost, "
+         "scenario comparisons; row-level security by force.", "Measures drafted; security to design"],
         ["D5", "Report pages", "Overview, Schedule, Match Day, Fixture Calendar, Wider Tournament, Budget by "
          "portfolio, Resource breakdown, Data Quality.", "Mock-ups produced"],
         ["D6", "Validation pack", "Tests against legacy outputs and synthetic test returns with expected results.",
          "Legacy logic reproduced with 0 differences"],
-        ["D7", "Guidance", "Force completion guidance; step-by-step Power BI build and refresh guide.", "Drafted"],
+        ["D7", "Guidance", "Force completion guidance; build, refresh and support guide.", "Drafted"],
+        ["D8", "Proof of concept", "End-to-end build on a single host force submission, before national rollout.",
+         "Next step"],
     ], widths=[1, 3.5, 9, 3.5])
 
     # ------------------------------------------- 6 question-by-question
@@ -245,7 +262,7 @@ def build(out=OUT):
         ["B6", "For drone policing, what is the cost ...?", "Section Unmanned Aerial Systems (Drones).", S],
         ["B7", "For CBRN policing, what is the cost ...?", "Section CBRN.", S],
         ["B8", "For mutual aid supplied resources, what is the cost ...?", "Resource Origin = Mutual Aid Supplied "
-         "(subject to the mutual aid costing decision, section 11).", S],
+         "(subject to the mutual aid costing decision, section 12).", S],
         ["B9", "For force supplied resources, what is the cost ...?", "Resource Origin = Force Supplied.", S],
     ], widths=W, status_col=3)
     doc.add_heading("6.4 Other", level=2)
@@ -289,17 +306,37 @@ def build(out=OUT):
          "required (mutual aid Normal Tour of Duty), Additional Resources rows with origin and rank lists."),
         ("Returns: ", "saved as '<Force name>.xlsx' in one folder; rows and columns must not be inserted or moved."),
     ])
-    doc.add_heading("7.2 Processing in Power BI", level=2)
-    bullets(doc, [
-        "Power Query reads only the two collection sheets of every return, uses the hidden header row, and turns "
-        "the grid into master tables (one row per force, resource, origin, rank, risk level and day).",
-        "Reference tables hold everything that is not collected from forces: rates, settings, Wider Tournament "
-        "days, fixture schedule and the Mercury skillset mapping. They are maintained by the planning team in one "
-        "place.",
-        "DAX measures produce the totals shown on the report pages; every figure can be filtered by force, "
-        "skillset, section, resource, rank, origin, risk level, day and date.",
-    ])
-    doc.add_heading("7.3 Calculation rules (as agreed with the project team)", level=2)
+    doc.add_heading("7.2 Solution architecture (summary of the Full Solution Proposal)", level=2)
+    table(doc, ["Stage", "What happens"], [
+        ["Host force submissions (x9)", "Forces complete the Resource Collection Template."],
+        ["SharePoint landing zone", "Official repository: version history, submission tracking, access control, "
+                                    "audit and automated ingestion."],
+        ["Fabric Dataflows Gen2", "Data validation and standardisation (Power Query)."],
+        ["Lakehouse - Bronze", "Raw submitted files, unchanged: audit, traceability, historical versions."],
+        ["Lakehouse - Silver", "Cleansed and normalised data: header promotion, unpivoting, standard force, "
+                               "resource, rank, venue and risk names."],
+        ["Lakehouse - Gold", "Fact tables (Match Day Demand, Tournament Demand) and dimensions (Force, Date, "
+                             "Risk, Match Phase, Venue, Match Schedule, Resource)."],
+        ["Power BI semantic model", "DAX business logic and row-level security."],
+        ["Power BI dashboards", "Executive, operational and force-level reporting."],
+    ], widths=[4.5, 12])
+    para(doc, "Principles: retain the force submission process; one source of truth; separate collection from "
+              "reporting; centralise business logic; force-level access controls; minimise manual intervention.")
+    para(doc, "Calculation framework: structural transformation in Dataflows / Power Query; aggregations, costs, "
+              "KPIs and scenario comparisons in DAX. Business calculations are not recreated in Excel.")
+    para(doc, "Standard record (every submission is transformed to this shape):", bold=True)
+    table(doc, ["Force", "Section", "Resource", "Origin", "Rank", "Risk Level", "Match Phase", "Officers",
+                "Normal ToD hrs", "Extra (overtime) hrs"],
+          [["West Midlands", "Public Order", "Level 2 PSU Officer", "Force Supplied", "Sergeant", "High",
+            "Match Day", "12", "8", "2"]], font=8)
+    doc.add_heading("7.3 Submission cycle", level=2)
+    table(doc, ["Stage", "Purpose"], [
+        ["Baseline Planning", "Initial force estimates"], ["Planning Review 1", "Updated assumptions"],
+        ["Planning Review 2", "Refined operational models"], ["Pre-Tournament Review", "Final validated position"],
+        ["Tournament Period", "Operational updates where required"]], widths=[6, 10.5])
+    para(doc, "Every version of each submission is stored without overwriting earlier ones, so stages can be "
+              "compared.")
+    doc.add_heading("7.4 Calculation rules (as agreed with the project team)", level=2)
     table(doc, ["Rule", "Agreed position", "Source"], [
         ["Officer deployments", "Officers x days (an officer on duty for three days counts three).", "Design"],
         ["Hourly rates", "Pulled through by rank; mutual aid rates differ from force supplied rates. June 2028 "
@@ -310,7 +347,7 @@ def build(out=OUT):
         ["Normal Tour of Duty", "Costed for all officers (Officers x Normal ToD hours x rate) and shown separately "
          "so the original overtime-only basis can still be compared.", "Project team answer 3"],
         ["Mutual aid PSU package", "GBP 35,716 per PSU covers the travel day in, the match day and the travel day "
-         "out. The v3 form collects mutual aid as officers by rank - costing method to be confirmed (section 11).",
+         "out. The v3 form collects mutual aid as officers by rank - costing method to be confirmed (section 12).",
          "Project team answer 6"],
         ["Wider Tournament", "Typical-day figure x number of days at each risk level: Low 7, Medium 11, High 11, "
          "Super High 3. Super High retained.", "National assumptions; answer 8"],
@@ -323,8 +360,31 @@ def build(out=OUT):
          "Answer 10"],
     ], widths=[3.5, 9.5, 4])
 
-    # --------------------------------------------------------- 8 existing
-    doc.add_heading("8. Existing dashboards and models", level=1)
+    # --------------------------------------------------------- 8 alignment
+    doc.add_heading("8. Alignment with the Full Solution Proposal - points to resolve", level=1)
+    table(doc, ["Topic", "Full Solution Proposal", "Position agreed / built so far", "Proposed resolution"], [
+        ["Highest risk level", "'Enhanced' / 'elevated'", "'Super High' (template, WT days)",
+         "Use one name across form, model and reports - recommend Super High."],
+        ["Template", "Resource Collection Template V2", "Template v3: one row per resource / origin / rank, hidden "
+         "single header row", "Adopt v3 - it removes most of the transformation the proposal identifies as "
+         "70-80% of effort."],
+        ["Staff demand", "'Staff Required' in Tournament Demand", "Form collects police officers only",
+         "Confirm whether staff are in scope; if so add staff rows and a staff rate."],
+        ["Hours", "'Hours Required' and 'Overtime Hours'", "Normal Tour of Duty hours and Extra Hours per officer",
+         "Hours Required = Normal ToD; Overtime Hours = Extra Hours."],
+        ["Cost", "Hours Required x hourly rate", "Overtime cost (Extra Hours x rate) plus Normal ToD cost; mutual "
+         "aid PSU package; FS Inspector+ at GBP 0", "Use the agreed rules (7.4); show overtime and normal duty "
+         "separately."],
+        ["Venue", "Dim Venue, venue-level demand", "Form records force and deployment location, not venue",
+         "Link force to venue through the fixture schedule."],
+        ["Mutual aid", "Mutual aid demand and assessment", "Collected as officers by rank; costing method open",
+         "Decision 4 (section 12)."],
+        ["Regional view", "National, regional and force levels", "Force and national", "Add force-to-region "
+         "mapping (decision 9)."],
+    ], widths=[2.8, 4.2, 4.8, 5.2], font=8)
+
+    # --------------------------------------------------------- 9 existing
+    doc.add_heading("9. Existing dashboards and models", level=1)
     table(doc, ["Product", "Description", "Relationship to this project"], [
         ["1) NPoCC Ops Dashboard - Summer Demand 2028 Resource Dashboard.xlsx", "Designed after the first round of "
          "Euro 2028 data collection. Filters by force, skill, tier and portfolio; daily demand by skillset; "
@@ -336,10 +396,12 @@ def build(out=OUT):
     ], widths=[5, 6, 6])
 
     # --------------------------------------------------- 9 data quality
-    doc.add_heading("9. Data quality and validation", level=1)
+    doc.add_heading("10. Data quality and validation", level=1)
     bullets(doc, [
-        ("Data Quality page: ", "lists returns that are not on the current form, numbers with no rank or resource, "
-         "hours outside 0-24, hours with no officers, missing rates, and fixture forces with no return."),
+        ("Validation before reporting: ", "mandatory fields completed; numeric fields valid; valid resource "
+         "categories and risk classifications; duplicate records; unexpected blanks; submission completeness; "
+         "hours outside 0-24; missing rates; fixture forces with no return. Forces remain responsible for the "
+         "accuracy of their submissions."),
         ("Legacy reproduction: ", "the new calculation logic was run on a force's completed first-round return and "
          "matched the original workbook's daily officers, daily cost and Wider Tournament total with 0 differences "
          "(also with figures entered as Super High). Known defects in the original workbook were identified and "
@@ -347,16 +409,18 @@ def build(out=OUT):
         ("Test pack: ", "synthetic returns with expected results, used to prove each Power BI build before real data "
          "is loaded."),
         ("Principles: ", "no formula is assumed correct because it existed in the old workbook; no business rule or "
-         "cost assumption is invented - all are listed in section 11 until confirmed."),
+         "cost assumption is invented - all are listed in section 12 until confirmed."),
     ])
 
     # ---------------------------------------------- 10 roles
-    doc.add_heading("10. Roles and responsibilities", level=1)
+    doc.add_heading("11. Roles and responsibilities", level=1)
     table(doc, ["Role", "Responsibility", "Name"], [
         ["Senior responsible owner", "Approves the ToR, scope changes and outputs.", "[TBC]"],
         ["Project lead - NPoCC Euro 2028 Police Planning Team", "Day-to-day ownership; maintains reference tables; "
          "chases forces; signs off figures.", "[TBC]"],
-        ["Power BI developer / analyst", "Builds and maintains the data model, measures and report pages; runs "
+        ["Solution architect / Fabric data engineer", "Landing zone, Dataflows, Lakehouse layers, data quality "
+         "rules.", "[TBC] (proposal: J. Konerska)"],
+        ["Power BI developer / analyst", "Semantic model, DAX measures, row-level security, report pages; runs "
          "validation.", "[TBC]"],
         ["NPCC portfolio leads", "Confirm skillset mapping and conversion rules (carriers, horses, counter-drone "
          "equipment, LFR vans), reserve requirements.", "[TBC]"],
@@ -367,7 +431,7 @@ def build(out=OUT):
     ], widths=[5, 9, 3])
 
     # ---------------------------------------------- 11 decisions
-    doc.add_heading("11. Decisions and information required", level=1)
+    doc.add_heading("12. Decisions and information required", level=1)
     table(doc, ["#", "Decision / information", "Needed for", "Owner"], [
         ["1", "Mercury skillset mapping: each form resource / rank to its Mercury defined skillset (and tier / "
          "portfolio).", "R1-R7, B1, O5-O8", "[TBC]"],
@@ -390,53 +454,66 @@ def build(out=OUT):
          "Calendar", "[TBC]"],
         ["11", "Ranks offered for Mounted, Dogs, Roads Policing and similar (Inspector / Sergeant / Constable).",
          "Form", "[TBC]"],
+        ["12", "Fabric capacity, workspace and SharePoint site; RLS roles (force / national).", "Delivery", "[TBC]"],
+        ["13", "Resolve the alignment points in section 8 (risk name, staff, venue, template version).", "All",
+         "[TBC]"],
     ], widths=[0.8, 9.2, 3.5, 3.5])
 
     # ---------------------------------------------- 12 assumptions & risks
-    doc.add_heading("12. Assumptions, constraints and dependencies", level=1)
+    doc.add_heading("13. Assumptions, constraints and dependencies", level=1)
     bullets(doc, [
         "Forces return the form unchanged in structure; the file name identifies the force.",
         "Rates are the June 2028 figures from the original workbook until replaced by the project team.",
         "Fixtures and competing nations are not yet known; outputs are produced per risk level until they are.",
-        "The project depends on the reference data in section 11 for several questions.",
+        "The project depends on the reference data in section 12 for several questions.",
         "Work is carried out on approved systems; files are not moved through personal accounts.",
     ])
-    doc.add_heading("13. Risks", level=1)
+    doc.add_heading("14. Risks", level=1)
     table(doc, ["Risk", "Impact", "Mitigation"], [
         ["Forces alter the form (insert rows, rename sheets) or use an old version.", "Figures mis-read or missing.",
          "Locked layout, guidance, Data Quality page flags old/altered forms."],
         ["Reference data (skillset mapping, schedule) not supplied in time.", "Questions S1-S7, R1-R7, B1 only "
-         "partly answered.", "Track in section 11; dashboard shows totals without the mapping."],
+         "partly answered.", "Track in section 12; dashboard shows totals without the mapping."],
         ["Business rules for conversions and scenarios not agreed.", "O2-O8 cannot be answered.", "Agree rules with "
          "portfolio leads; record decisions in the change log."],
         ["Inconsistent costing between mutual aid methods.", "Mis-stated budget.", "Decision 4; show both bases "
          "until agreed."],
         ["Single person dependency for the Power BI build.", "Delay if unavailable.", "Step-by-step build guide; "
          "documented queries and measures; test pack."],
+        ["Fabric capacity, licences or access not approved in time.", "Delivery delayed.", "Early request (decision "
+         "12); the Power Query logic also runs in Power BI Desktop as an interim."],
+        ["Transformation effort underestimated (proposal: 70-80% of effort).", "Delay.", "Template v3 is built "
+         "for ingestion; proof of concept on one force first."],
     ], widths=[5.5, 4.5, 7])
 
     # ---------------------------------------------- 14 governance
-    doc.add_heading("14. Governance, security and change control", level=1)
+    doc.add_heading("15. Governance, security and change control", level=1)
     bullets(doc, [
         ("Classification: ", "the form, returns, model and dashboard are OFFICIAL and handled in line with the HMG "
          "Security Policy Framework (risk management): https://www.gov.uk/government/publications/security-policy-"
          "framework/hmg-security-policy-framework#risk-management"),
         ("Freedom of Information: ", "requests are handled through npcc.foi.request@npfdu.police.uk."),
-        ("Access: ", "Power BI workspace and returns folder restricted to named users in the client groups."),
+        ("Access: ", "SharePoint landing zone, Fabric workspace and reports restricted to named users; row-level "
+         "security gives each force its own data and national teams all data."),
+        ("Versioning and audit: ", "original submissions kept unchanged (Bronze layer) with version history, so any "
+         "figure can be traced back to the file that produced it."),
         ("Change control: ", "changes to the form, calculation rules or reference data are logged with date, "
          "reason and approver; the form carries a version number."),
         ("Reporting: ", "progress reported to the project lead [frequency TBC]; issues and decisions recorded in "
-         "section 11."),
+         "section 12."),
     ])
-    doc.add_heading("15. Milestones", level=1)
+    doc.add_heading("16. Milestones", level=1)
     table(doc, ["Milestone", "Target date"], [
         ["ToR agreed", "[TBC]"], ["Collection Form v3 signed off", "[TBC]"],
+        ["Fabric workspace, SharePoint landing zone and access in place", "[TBC]"],
+        ["Phase 1 - proof of concept on a single host force submission", "[TBC]"],
         ["Skillset mapping and fixture schedule supplied", "[TBC]"], ["Form issued to forces", "[TBC]"],
         ["Power BI model built and validated with the test pack", "[TBC]"], ["Returns received and loaded", "[TBC]"],
-        ["Dashboard released to client groups", "[TBC]"], ["Update after the qualifying draw (teams, risk levels)",
-                                                           "[TBC]"],
+        ["Phase 2 - national rollout (all host forces) and dashboard release", "[TBC]"],
+        ["Planning Review 1 / Review 2 / Pre-Tournament submissions", "[TBC]"],
+        ["Update after the qualifying draw (teams, risk levels)", "[TBC]"]
     ], widths=[11, 5])
-    doc.add_heading("16. Approval", level=1)
+    doc.add_heading("17. Approval", level=1)
     table(doc, ["Name", "Role", "Signature", "Date"], [["", "", "", ""], ["", "", "", ""]], widths=[4.5, 5, 4, 3])
 
     # ---------------------------------------------- appendices
@@ -450,9 +527,15 @@ def build(out=OUT):
         ["PSU / BDU", "Police Support Unit / Level 3 public order unit."],
         ["Risk level", "Low, Medium, High, Super High - the assumed risk of a fixture or tournament day."],
         ["Officer deployments", "Officers x days."],
-        ["Master table", "The combined table Power BI builds from all returns: one row per force, resource, "
-                         "origin, rank, risk level and day."],
+        ["Fact table", "The combined table built from all submissions: one row per force, resource, origin, rank, "
+                       "risk level and match phase."],
         ["Reference table", "Data maintained by the planning team (rates, days, schedule, skillset mapping)."],
+        ["Microsoft Fabric", "Microsoft's analytics platform hosting the data pipeline, Lakehouse and Power BI."],
+        ["Dataflows Gen2", "Fabric's Power Query tool used to validate and standardise submissions."],
+        ["Lakehouse (Bronze / Silver / Gold)", "Storage in three layers: raw files; cleansed data; reporting-ready "
+                                               "fact and dimension tables."],
+        ["Semantic model", "The Power BI model holding the tables, relationships, DAX measures and security."],
+        ["Row-level security (RLS)", "Rules limiting which rows (e.g. which force's data) a user can see."],
         ["ARV / CTSFO / AFO", "Armed Response Vehicle / Counter Terrorist Specialist Firearms Officer / Authorised "
                               "Firearms Officer."],
         ["CBRN / LFR / UAS", "Chemical, Biological, Radiological and Nuclear / Live Facial Recognition / Unmanned "
