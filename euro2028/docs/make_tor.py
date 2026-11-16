@@ -15,6 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "EURO_2028_Resource_Dashboard_Terms_of_Reference.docx")
 NAVY = RGBColor(0x1F, 0x38, 0x64)
 STATUS = {"Supported": "C6EFCE", "Supported once reference data is added": "FFEB9C",
+          "Supported once the Concurrent Operations return is received": "FFEB9C",
           "Needs new data or a business rule": "F8CBAD"}
 
 
@@ -99,7 +100,7 @@ def build(out=OUT):
     r.bold, r.font.size = True, Pt(16)
     table(doc, ["Item", "Detail"], [
         ["Document", "Terms of Reference - EURO 2028 Resource Forecast Collection and Dashboard"],
-        ["Version", "0.2 DRAFT for review - aligned with the Full Solution Proposal v1.0"],
+        ["Version", "0.3 DRAFT for review - aligned with the Full Solution Proposal v1.0; concurrent operations added"],
         ["Date", dt.date.today().strftime("%d %B %Y")],
         ["Owner", "NPoCC Euro 2028 Police Planning Team - [named lead TBC]"],
         ["Classification", "OFFICIAL"],
@@ -171,6 +172,9 @@ def build(out=OUT):
         "Cost and resource breakdowns by force, skillset, section, resource, rank, origin (force supplied / mutual "
         "aid), risk level, relative day and date.",
         "Data-quality reporting, validation against the legacy workbook, and user and build guidance.",
+        "A generic Concurrent Operations collection template, completed by non-host (and host) forces when another "
+        "operation is stood up (e.g. Op Brock, Op Stack), and its inclusion in the dashboard to show resources "
+        "already committed during the tournament period.",
     ])
     para(doc, "Out of scope (unless agreed through change control)", bold=True)
     bullets(doc, [
@@ -203,6 +207,10 @@ def build(out=OUT):
         ["D7", "Guidance", "Force completion guidance; build, refresh and support guide.", "Drafted"],
         ["D8", "Proof of concept", "End-to-end build on a single host force submission, before national rollout.",
          "Next step"],
+        ["D9", "Concurrent Operations template and dashboard view", "Generic return (operation, dates, resource, "
+         "origin, rank, officers, Normal Tour of Duty, Extra Hours) for forces supporting another operation; "
+         "ingested through the same pipeline; dashboard page showing EURO 2028 demand plus concurrent operations "
+         "by date and skillset.", "To build"],
     ], widths=[1, 3.5, 9, 3.5])
 
     # ------------------------------------------- 6 question-by-question
@@ -214,6 +222,7 @@ def build(out=OUT):
     H = ["Ref", "Question (from Question Prompts)", "How the dashboard answers it", "Status"]
     W = [1.1, 6.2, 7.2, 2.5]
     S, A, N = "Supported", "Supported once reference data is added", "Needs new data or a business rule"
+    C = "Supported once the Concurrent Operations return is received"
     doc.add_heading("6.1 Schedule", level=2)
     table(doc, H, [
         ["S1", "For each venue, when are the fixtures being played?", "Fixture schedule table (venue, date) shown "
@@ -277,11 +286,14 @@ def build(out=OUT):
         ["O4", "Interpreting the proposed live facial recognition officer resources, how many LFR Vans are "
          "required ...?", "Needs a vans-per-officer (or per team) rule.", N],
         ["O5", "Should Op Brock be called, how many additional resources (categorised by Mercury skillset) will be "
-         "required to police the operation?", "Not collected on the current form. Needs either an extra scenario "
-         "on the form or an uplift rule.", N],
-        ["O6", "Should Op Stack be called, how many additional resources ... will be required?", "As O5.", N],
-        ["O7", "Should Israel qualify, how many additional resources ... will be required?", "As O5; could be "
-         "modelled as a scenario uplift on affected fixtures once the draw is known.", N],
+         "required to police the operation?", "Concurrent Operations collection template (section 7.4): forces "
+         "return the resources the operation needs by date; the dashboard adds them to EURO 2028 demand on the "
+         "same dates to show the combined pressure by skillset.", C],
+        ["O6", "Should Op Stack be called, how many additional resources ... will be required?", "As O5 - the "
+         "template is generic, so any operation (Op Stack or others) is returned the same way.", C],
+        ["O7", "Should Israel qualify, how many additional resources ... will be required?", "Returned on the "
+         "Concurrent Operations template as a named scenario, or as a risk-level uplift on affected fixtures once "
+         "the draw is known.", C],
         ["O8", "Categorised by Mercury skillset, how many resources are required for the national policing reserve "
          "and what is the national impact of this?", "Needs the reserve definition (number or percentage by "
          "skillset) and capacity baselines (see R8).", N],
@@ -336,7 +348,26 @@ def build(out=OUT):
         ["Tournament Period", "Operational updates where required"]], widths=[6, 10.5])
     para(doc, "Every version of each submission is stored without overwriting earlier ones, so stages can be "
               "compared.")
-    doc.add_heading("7.4 Calculation rules (as agreed with the project team)", level=2)
+    doc.add_heading("7.4 Concurrent operations (Op Brock, Op Stack and others)", level=2)
+    para(doc, "Purpose: if another operation is stood up during the tournament period - e.g. Op Brock needing "
+              "100 additional roads policing officers - those officers are no longer available for EURO 2028. The "
+              "dashboard must show the resources already in use on each date so the strain on EURO 2028 (and on "
+              "mutual aid supplied to it) can be seen.")
+    bullets(doc, [
+        ("Who completes it: ", "non-host forces, and host forces where they also support the operation. Non-host "
+         "forces are the main suppliers of mutual aid to EURO 2028, so their commitments matter most."),
+        ("When: ", "when an operation is stood up or planned, and updated as it changes; each return is a new "
+         "version (same submission cycle and SharePoint landing zone as the main template)."),
+        ("Layout (one row per resource / origin / rank, as the main template): ", "Operation name; Force; Start "
+         "date; End date; Section and Resource (same list as the main template, so skillsets match); Resource "
+         "Origin; Rank; then for each date - Officers, Normal Tour of Duty hours, Extra Hours. No risk levels."),
+        ("In the dashboard: ", "a Concurrent Operations fact table by force, operation, resource, rank and date; "
+         "views of EURO 2028 demand + concurrent operations by date and skillset; and, once capacity baselines are "
+         "available (decision 9), demand against capacity to highlight shortfalls."),
+        ("Costs: ", "the same rates and rules as the main template, shown separately so operation costs are not "
+         "counted as EURO 2028 costs."),
+    ])
+    doc.add_heading("7.5 Calculation rules (as agreed with the project team)", level=2)
     table(doc, ["Rule", "Agreed position", "Source"], [
         ["Officer deployments", "Officers x days (an officer on duty for three days counts three).", "Design"],
         ["Hourly rates", "Pulled through by rank; mutual aid rates differ from force supplied rates. June 2028 "
@@ -373,7 +404,7 @@ def build(out=OUT):
         ["Hours", "'Hours Required' and 'Overtime Hours'", "Normal Tour of Duty hours and Extra Hours per officer",
          "Hours Required = Normal ToD; Overtime Hours = Extra Hours."],
         ["Cost", "Hours Required x hourly rate", "Overtime cost (Extra Hours x rate) plus Normal ToD cost; mutual "
-         "aid PSU package; FS Inspector+ at GBP 0", "Use the agreed rules (7.4); show overtime and normal duty "
+         "aid PSU package; FS Inspector+ at GBP 0", "Use the agreed rules (7.5); show overtime and normal duty "
          "separately."],
         ["Venue", "Dim Venue, venue-level demand", "Form records force and deployment location, not venue",
          "Link force to venue through the fixture schedule."],
@@ -427,7 +458,10 @@ def build(out=OUT):
         ["Strategic Planning and Performance", "Assurance of method and outputs.", "[TBC]"],
         ["Host Force planning teams", "Complete and return the collection form; correct data-quality issues.",
          "[TBC]"],
-        ["NPoCC Ops", "User of operational views.", "[TBC]"],
+        ["NPoCC Ops", "User of operational views; triggers Concurrent Operations returns when an operation is "
+         "stood up.", "[TBC]"],
+        ["Non-host forces", "Complete and return the Concurrent Operations template when they support another "
+         "operation during the tournament period.", "[TBC]"],
     ], widths=[5, 9, 3])
 
     # ---------------------------------------------- 11 decisions
@@ -456,6 +490,9 @@ def build(out=OUT):
          "Form", "[TBC]"],
         ["12", "Fabric capacity, workspace and SharePoint site; RLS roles (force / national).", "Delivery", "[TBC]"],
         ["13", "Resolve the alignment points in section 8 (risk name, staff, venue, template version).", "All",
+         "[TBC]"],
+        ["14", "Concurrent operations: which operations are in scope, who triggers a return, the date range to "
+         "cover, and whether Israel qualifying is a separate scenario or a risk-level uplift.", "O5-O7, D9",
          "[TBC]"],
     ], widths=[0.8, 9.2, 3.5, 3.5])
 
@@ -510,6 +547,7 @@ def build(out=OUT):
         ["Skillset mapping and fixture schedule supplied", "[TBC]"], ["Form issued to forces", "[TBC]"],
         ["Power BI model built and validated with the test pack", "[TBC]"], ["Returns received and loaded", "[TBC]"],
         ["Phase 2 - national rollout (all host forces) and dashboard release", "[TBC]"],
+        ["Concurrent Operations template issued to non-host forces; dashboard view live", "[TBC]"],
         ["Planning Review 1 / Review 2 / Pre-Tournament submissions", "[TBC]"],
         ["Update after the qualifying draw (teams, risk levels)", "[TBC]"]
     ], widths=[11, 5])
