@@ -26,9 +26,8 @@ OVERVIEW = [
     "This form collects each force's forecast of the resources it needs - by resource, rank and origin (force supplied "
     "or mutual aid) - for match days and for the wider tournament. Returns from all forces are combined in a national "
     "Power BI dashboard used for capacity, mutual aid and budget planning at force, regional and national level.",
-    "Fixture allocations and competing nations are not yet confirmed, so you are asked to complete the Low, Medium "
-    "and High risk levels. The planning team will apply the appropriate risk level to each fixture. Super High is "
-    "greyed out and is not to be completed at this stage; it will be opened once fixtures are known.",
+    "Fixture allocations and competing nations are not yet confirmed, so you are asked to complete every risk level "
+    "(Low, Medium, High and Super High). The planning team will apply the appropriate risk level to each fixture.",
 ]
 INSTRUCTIONS = [
     "%TABS%",
@@ -36,10 +35,11 @@ INSTRUCTIONS = [
     "Day -1, Match Day and Match Day +1.",
     "Wider Tournament Resource: what your force needs on a TYPICAL tournament day when there is no fixture in your "
     "area, at each risk level.",
-    "For every line you use, complete all three columns: Total Officers required, Normal Tour of Duty (hours per "
+    "For every line you use, complete every white cell: Total Officers required, Opportunity Cost (hours per "
     "officer) and Chargeable Hours (hours per officer). Costs are calculated from the hours - if hours are blank, no "
     "cost is counted for that line.",
-    "Only type in the white cells. Grey hatched cells are not required for that resource or day and are locked.",
+    "Only type in the white cells. Grey hatched cells are not required for that resource, rank or day and are "
+    "locked (see 'Locked cells' below).",
     "Do not insert, delete, move or rename rows, columns or tabs - the returns are read automatically and any change "
     "to the layout will stop your figures being counted.",
     "Save the completed form as your force name, e.g. 'West Midlands Police.xlsx'.",
@@ -55,20 +55,22 @@ NOTES = [
      "Resources marked (Match Day) or (Match Day Only) are completed in the Match Day columns only. Resources marked "
      "(Non-Match Day) are completed in the Match Day -2, Match Day -1 and Match Day +1 columns only. The columns that "
      "do not apply are hatched."),
+    ("Locked cells", "Grey hatched cells cannot be completed: Chargeable Hours for all Inspectors; Chargeable Hours "
+                     "for In Stadium Sergeants and Constables; and Opportunity Cost for all Mutual Aid lines (only "
+                     "chargeable hours are costed for mutual aid)."),
     ("Blank or zero",
      "Leave a line blank if you do not need that resource. If you need officers but no chargeable (extra) hours, "
      "enter 0 - do not leave it blank - so we know it has not been missed."),
-    ("Hours", "Normal Tour of Duty and Chargeable Hours are hours PER OFFICER for that day, not totals for the team "
+    ("Hours", "Opportunity Cost and Chargeable Hours are hours PER OFFICER for that day, not totals for the team "
               "(e.g. 20 officers each working 10 hours with 2 extra hours: 20, 10, 2)."),
-    ("Mutual aid", "Mutual Aid Requested lines are the resources you need from other forces. Normal Tour of Duty is "
-                   "not required for mutual aid and is hatched."),
+    ("Mutual aid", "Mutual Aid Requested lines are the resources you need from other forces. Only Chargeable Hours "
+                   "are costed for mutual aid, so Opportunity Cost is hatched."),
     ("Ranks and roles", "Each line is one rank. Where a resource is a role or skill (e.g. Bronze Commander, CBRN "
                         "Search), use the line provided for it - the rank is already set."),
     ("Additional Resources", "Use these lines for anything not listed: describe the resource and choose the origin "
                              "and rank from the drop-down lists."),
-    ("Risk levels", "Low, Medium and High are the assumed risk of a fixture or tournament day. Complete all three, "
-                    "even if your current planning assumption is a single level. Super High is greyed out and not in "
-                    "use yet - do not complete it."),
+    ("Risk levels", "Low, Medium, High and Super High are the assumed risk of a fixture or tournament day. Complete "
+                    "every level, even if your current planning assumption is a single level."),
     ("Notes", "If you need to explain an assumption, add it in the Notes column (or contact the team) - do not type "
               "notes in the number cells."),
     ("Handling", "This form and your return are OFFICIAL. Data will be shared with the NPoCC EURO 2028 Police "
@@ -85,21 +87,20 @@ FIELDS = [
              "type (Level 2 PSU / Level 3 BDU).", "Pre-filled (choose on Additional Resources lines)"),
     ("Total Officers required", "Number of officers (or, on PSU / BDU lines, number of units) needed that day.",
      "ESSENTIAL - whole number"),
-    ("Normal Tour of Duty", "Normal rostered hours per officer for that day.", "ESSENTIAL - hours per officer "
-                                                                           "(force supplied)"),
+    ("Opportunity Cost", "Normal rostered (tour of duty) hours per officer for that day - the time officers are "
+                         "taken away from other duties.", "ESSENTIAL - hours per officer (force supplied only)"),
     ("Chargeable Hours", "Extra / overtime hours per officer for that day. Drives the cost.", "ESSENTIAL - hours "
-                                                                                             "per officer; 0 if none"),
+     "per officer; 0 if none (locked for Inspectors and In Stadium)"),
     ("Match Day -2 / -1 / Match Day / +1", "Two days before, the day before, the day of and the day after the "
                                            "fixture.", "Match Day tab"),
-    ("Low / Medium / High", "Risk level of the fixture or tournament day.", "Complete all three"),
-    ("Super High", "Highest risk level - not in use until fixtures are confirmed.", "Greyed out - do not complete"),
+    ("Low / Medium / High / Super High", "Risk level of the fixture or tournament day.", "Complete every level"),
     ("PSU / Serial Configurations", "Officers of each rank in ONE PSU / BDU (e.g. 1 / 3 / 21).",
      "ESSENTIAL if you request any PSUs / BDUs"),
 ]
 CHECKLIST = [
-    "Low, Medium and High completed (Super High is not required yet).",
+    "Every risk level (Low, Medium, High, Super High) completed.",
     "PSU / Serial Configurations completed for every PSU / BDU type you have requested.",
-    "Every line with officers also has Normal Tour of Duty and Chargeable Hours (0 if no extra hours).",
+    "Every line with officers has all its white hours cells completed (0 if no extra hours).",
     "Nothing typed in hatched cells; no rows, columns or tabs added, removed or renamed.",
     "Additional Resources lines have a description, origin and rank.",
     "File saved as your force name and sent by the deadline.",
@@ -109,7 +110,7 @@ CHECKLIST = [
 TABS = {False: "Complete the Match Day Resource and Wider Tournament Resource tabs.",
         True: "Complete the Match Day Resource, Wider Tournament Resource and Pan London tabs."}
 PAN_LONDON = ("Pan London tab", "Complete in the same way as the Wider Tournament Resource tab - Number required, "
-              "Normal Tour of Duty and Chargeable Hours at each risk level - for the London-wide resources supporting "
+              "Opportunity Cost and Chargeable Hours at each risk level - for the London-wide resources supporting "
               "the fixtures at Wembley Stadium and Tottenham Hotspur Stadium.")
 
 
