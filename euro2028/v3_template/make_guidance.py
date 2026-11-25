@@ -26,12 +26,12 @@ OVERVIEW = [
     "This form collects each force's forecast of the resources it needs - by resource, rank and origin (force supplied "
     "or mutual aid) - for match days and for the wider tournament. Returns from all forces are combined in a national "
     "Power BI dashboard used for capacity, mutual aid and budget planning at force, regional and national level.",
-    "Fixture allocations and competing nations are not yet confirmed, so you are asked to complete every risk level "
-    "(Low, Medium, High and Super High). The planning team will apply the appropriate risk level to each fixture.",
+    "Fixture allocations and competing nations are not yet confirmed, so you are asked to complete the Low, Medium "
+    "and High risk levels. The planning team will apply the appropriate risk level to each fixture. Super High is "
+    "greyed out and is not to be completed at this stage; it will be opened once fixtures are known.",
 ]
 INSTRUCTIONS = [
-    "Complete the Match Day Resource and Wider Tournament Resource tabs. The Metropolitan Police Service should also "
-    "complete the Pan London tab.",
+    "%TABS%",
     "Match Day Resource: what your force needs for ONE fixture at each risk level, for each of Match Day -2, Match "
     "Day -1, Match Day and Match Day +1.",
     "Wider Tournament Resource: what your force needs on a TYPICAL tournament day when there is no fixture in your "
@@ -66,8 +66,9 @@ NOTES = [
                         "Search), use the line provided for it - the rank is already set."),
     ("Additional Resources", "Use these lines for anything not listed: describe the resource and choose the origin "
                              "and rank from the drop-down lists."),
-    ("Risk levels", "Low, Medium, High and Super High are the assumed risk of a fixture or tournament day. Complete "
-                    "every level, even if your current planning assumption is a single level."),
+    ("Risk levels", "Low, Medium and High are the assumed risk of a fixture or tournament day. Complete all three, "
+                    "even if your current planning assumption is a single level. Super High is greyed out and not in "
+                    "use yet - do not complete it."),
     ("Notes", "If you need to explain an assumption, add it in the Notes column (or contact the team) - do not type "
               "notes in the number cells."),
     ("Handling", "This form and your return are OFFICIAL. Data will be shared with the NPoCC EURO 2028 Police "
@@ -90,12 +91,13 @@ FIELDS = [
                                                                                              "per officer; 0 if none"),
     ("Match Day -2 / -1 / Match Day / +1", "Two days before, the day before, the day of and the day after the "
                                            "fixture.", "Match Day tab"),
-    ("Low / Medium / High / Super High", "Risk level of the fixture or tournament day.", "Complete every level"),
+    ("Low / Medium / High", "Risk level of the fixture or tournament day.", "Complete all three"),
+    ("Super High", "Highest risk level - not in use until fixtures are confirmed.", "Greyed out - do not complete"),
     ("PSU / Serial Configurations", "Officers of each rank in ONE PSU / BDU (e.g. 1 / 3 / 21).",
      "ESSENTIAL if you request any PSUs / BDUs"),
 ]
 CHECKLIST = [
-    "Every risk level (Low, Medium, High, Super High) completed.",
+    "Low, Medium and High completed (Super High is not required yet).",
     "PSU / Serial Configurations completed for every PSU / BDU type you have requested.",
     "Every line with officers also has Normal Tour of Duty and Chargeable Hours (0 if no extra hours).",
     "Nothing typed in hatched cells; no rows, columns or tabs added, removed or renamed.",
@@ -104,7 +106,14 @@ CHECKLIST = [
 ]
 
 
-def build(out=OUT):
+TABS = {False: "Complete the Match Day Resource and Wider Tournament Resource tabs.",
+        True: "Complete the Match Day Resource, Wider Tournament Resource and Pan London tabs."}
+PAN_LONDON = ("Pan London tab", "Complete in the same way as the Wider Tournament Resource tab - Number required, "
+              "Normal Tour of Duty and Chargeable Hours at each risk level - for the London-wide resources supporting "
+              "the fixtures at Wembley Stadium and Tottenham Hotspur Stadium.")
+
+
+def build(out=OUT, met=False):
     wb = Workbook()
     ws = wb.active
     ws.title = "Guidance"
@@ -152,11 +161,11 @@ def build(out=OUT):
     for t in OVERVIEW:
         text(t)
     heading("Instructions for forces:")
-    for i, t in enumerate(INSTRUCTIONS, 1):
+    for i, t in enumerate([x.replace("%TABS%", TABS[met]) for x in INSTRUCTIONS], 1):
         text(f"{i}. {t}")
     text(DEADLINE, bold=True, color=RED)
     heading("Important notes and guidance:")
-    for title, t in NOTES:
+    for title, t in NOTES[:1] + ([PAN_LONDON] if met else []) + NOTES[1:]:
         c = ws.cell(r, 2, title)
         c.font = Font(name=FONT, size=11, bold=True)
         c.alignment = Alignment(wrap_text=True, vertical="top")
@@ -208,4 +217,5 @@ def build(out=OUT):
 
 
 if __name__ == "__main__":
-    print(build(os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else OUT)))
+    print(build(OUT))
+    print(build(OUT.replace(".xlsx", "_MPS_Pan_London.xlsx"), met=True))
