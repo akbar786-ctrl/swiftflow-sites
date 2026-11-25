@@ -55,16 +55,18 @@ NOTES = [
      "Resources marked (Match Day) or (Match Day Only) are completed in the Match Day columns only. Resources marked "
      "(Non-Match Day) are completed in the Match Day -2, Match Day -1 and Match Day +1 columns only. The columns that "
      "do not apply are hatched."),
-    ("Locked cells", "Grey hatched cells cannot be completed: Chargeable Hours for all Inspectors; Chargeable Hours "
-                     "for In Stadium Sergeants and Constables; and Opportunity Cost for all Mutual Aid lines (only "
-                     "chargeable hours are costed for mutual aid)."),
+    ("Locked cells", "Grey hatched cells cannot be completed: Chargeable Hours for Force Supplied Inspectors; "
+                     "Chargeable Hours for all In Stadium lines (In Stadium is costed on Opportunity Cost, which is "
+                     "open for every rank and origin); and Opportunity Cost for all other Mutual Aid lines (only "
+                     "Chargeable Hours are costed for mutual aid, including Mutual Aid Inspectors)."),
     ("Blank or zero",
      "Leave a line blank if you do not need that resource. If you need officers but no chargeable (extra) hours, "
      "enter 0 - do not leave it blank - so we know it has not been missed."),
     ("Hours", "Opportunity Cost and Chargeable Hours are hours PER OFFICER for that day, not totals for the team "
               "(e.g. 20 officers each working 10 hours with 2 extra hours: 20, 10, 2)."),
-    ("Mutual aid", "Mutual Aid Requested lines are the resources you need from other forces. Only Chargeable Hours "
-                   "are costed for mutual aid, so Opportunity Cost is hatched."),
+    ("Mutual aid", "Mutual Aid Requested lines are the resources you need from other forces. Chargeable Hours are "
+                   "costed for mutual aid, so Opportunity Cost is hatched - except In Stadium, where Opportunity Cost "
+                   "is completed and Chargeable Hours is hatched."),
     ("Ranks and roles", "Each line is one rank. Where a resource is a role or skill (e.g. Bronze Commander, CBRN "
                         "Search), use the line provided for it - the rank is already set."),
     ("Additional Resources", "Use these lines for anything not listed: describe the resource and choose the origin "
@@ -88,9 +90,10 @@ FIELDS = [
     ("Total Officers required", "Number of officers (or, on PSU / BDU lines, number of units) needed that day.",
      "ESSENTIAL - whole number"),
     ("Opportunity Cost", "Normal rostered (tour of duty) hours per officer for that day - the time officers are "
-                         "taken away from other duties.", "ESSENTIAL - hours per officer (force supplied only)"),
+                         "taken away from other duties.", "ESSENTIAL - hours per officer (force supplied, and all "
+                                                          "In Stadium lines)"),
     ("Chargeable Hours", "Extra / overtime hours per officer for that day. Drives the cost.", "ESSENTIAL - hours "
-     "per officer; 0 if none (locked for Inspectors and In Stadium)"),
+     "per officer; 0 if none (locked for Force Supplied Inspectors and In Stadium)"),
     ("Match Day -2 / -1 / Match Day / +1", "Two days before, the day before, the day of and the day after the "
                                            "fixture.", "Match Day tab"),
     ("Low / Medium / High / Super High", "Risk level of the fixture or tournament day.", "Complete every level"),
