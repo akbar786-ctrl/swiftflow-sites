@@ -50,15 +50,21 @@ NOTES = [
      "Enter how many officers of each rank make up ONE unit - for example a Level 2 PSU of 1 Inspector, 3 Sergeants "
      "and 21 Constables is entered as 1, 3 and 21. Then, in the Public Order / Public Safety section, enter the NUMBER "
      "of PSUs or BDUs required. Officers are calculated as number of units x officers per unit, so both parts must "
-     "be completed. Configurations left blank mean your PSUs cannot be counted or costed."),
+     "be completed. Configurations left blank mean your PSUs cannot be counted or costed. Hours are entered on the "
+     "configuration lines (per officer); on the PSU / BDU number lines only the number of units is needed, so the "
+     "hours cells there are hatched."),
     ("Match Day only and Non-Match Day resources",
      "Resources marked (Match Day) or (Match Day Only) are completed in the Match Day columns only. Resources marked "
-     "(Non-Match Day) are completed in the Match Day -2, Match Day -1 and Match Day +1 columns only. The columns that "
-     "do not apply are hatched."),
+     "(Non-Match Day) are completed in the Match Day -2, Match Day -1 and Match Day +1 columns only. Location-based "
+     "public order lines (In Stadium, Stadium Vicinity, Town Centre) are Match Day only. The columns that do not apply "
+     "are hatched."),
     ("Locked cells", "Grey hatched cells cannot be completed: Chargeable Hours for Force Supplied Inspectors; "
                      "Chargeable Hours for all In Stadium lines (In Stadium is costed on Opportunity Cost, which is "
                      "open for every rank and origin); and Opportunity Cost for all other Mutual Aid lines (only "
-                     "Chargeable Hours are costed for mutual aid, including Mutual Aid Inspectors)."),
+                     "Chargeable Hours are costed for mutual aid, including Mutual Aid Inspectors). On Additional "
+                     "Resources lines the same rules apply automatically once you choose the origin and rank."),
+    ("Missing hours", "If you enter a number of officers, any hours cell on that day that is still blank turns red. "
+                      "Complete it (0 if none) so the line can be costed."),
     ("Blank or zero",
      "Leave a line blank if you do not need that resource. If you need officers but no chargeable (extra) hours, "
      "enter 0 - do not leave it blank - so we know it has not been missed."),
@@ -133,7 +139,7 @@ def build(out=OUT, met=False):
             ws.cell(row, c).fill = PatternFill("solid", fgColor=colour)
 
     ws.merge_cells("B1:D1")
-    ws["B1"] = "EURO 2028 Resource Forecast Collection - Instructions and Guidance"
+    ws["B1"] = "EURO 2028 Resource Data Collection - Instructions and Guidance"
     ws["B1"].font = Font(name=FONT, size=16, bold=True, color="FFFFFF")
     ws["B1"].alignment = Alignment(vertical="center")
     fill_row(1, NAVY)
@@ -197,7 +203,8 @@ def build(out=OUT, met=False):
         ws.row_dimensions[r].height = max(16, 15 * max(len(d) // 70 + 1, len(w) // 38 + 1, len(f) // 34 + 1))
         r += 1
     heading("Colour key:")
-    for label, colour, pattern in (("Type here", "FFFFFF", None), ("Not required - locked", "D9D9D9", "lightUp"),
+    for label, colour, pattern in (("Type here", "FFFFFF", None), ("Not required - locked", "D9D9D9", "lightGray"),
+                                   ("Missing hours - please complete", "FFC7CE", None),
                                    ("Section heading - no entry", NAVY, None)):
         c = ws.cell(r, 2)
         c.fill = PatternFill(patternType=pattern or "solid", fgColor="808080" if pattern else colour,

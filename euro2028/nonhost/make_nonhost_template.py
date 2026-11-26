@@ -63,7 +63,17 @@ def font(size=10, bold=False, color="000000", italic=False):
     return Font(name=FONT, size=size, bold=bold, color=color, italic=italic)
 
 
+USE_TEAM_BANNER = True      # rows 1-10 left clear for the national team's banner (added by add_banner.py)
+
+
 def banner(ws, last_col, title, logos, title_col=3):
+    if USE_TEAM_BANNER:
+        for r in range(1, 11):
+            ws.row_dimensions[r].height = 15
+        off = ws.cell(10, last_col, "OFFICIAL")
+        off.font = font(11, True, RED)
+        off.alignment = Alignment(horizontal="right")
+        return
     for r in range(1, 8):
         for c in range(1, last_col + 1):
             ws.cell(r, c).fill = fill(NAVY if r < 7 else MIDBLUE)
@@ -97,7 +107,7 @@ def guidance(wb, logos):
     for col, w in zip("ABCDE", [14, 14, 36, 62, 30]):
         ws.column_dimensions[col].width = w
     banner(ws, 5, "Non-Host Resource Collection Form", logos)
-    r = 9
+    r = 11
 
     def heading(text):
         nonlocal r
@@ -242,7 +252,7 @@ def data_sheet(wb, logos, op_row):
               ("Force:", f"=IF(Guidance!D{op_row + 1}=\"\",\"Complete on Guidance tab\",Guidance!D{op_row + 1})"),
               ("From:", f"=IF(Guidance!D{op_row + 2}=\"\",\"-\",TEXT(Guidance!D{op_row + 2},\"dd/mm/yyyy\"))"),
               ("To:", f"=IF(Guidance!D{op_row + 3}=\"\",\"-\",TEXT(Guidance!D{op_row + 3},\"dd/mm/yyyy\"))")]
-    r = 9
+    r = 11
     for i, (lab, f) in enumerate(labels):
         c = (i % 2) * 2 + 1
         rr = r + i // 2
@@ -258,31 +268,31 @@ def data_sheet(wb, logos, op_row):
             for cc in (5, 6):
                 ws.cell(rr, cc).fill = fill(LIGHT)
                 ws.cell(rr, cc).border = BOX
-    hdr = 14
+    hdr = 16
     last = hdr + ROWS
     # completion panel
-    ws.merge_cells("G9:H9")
-    ws["G9"] = "Completion check"
-    ws["G9"].font = font(11, True, "FFFFFF")
-    ws["G9"].fill = fill(NAVY)
-    ws["G9"].alignment = Alignment(horizontal="center")
-    ws.merge_cells("G10:H10")
-    ws["G10"] = (f'=IF(COUNTA(B{hdr + 1}:B{last})=0,"No resources entered yet",'
+    ws.merge_cells("G11:H11")
+    ws["G11"] = "Completion check"
+    ws["G11"].font = font(11, True, "FFFFFF")
+    ws["G11"].fill = fill(NAVY)
+    ws["G11"].alignment = Alignment(horizontal="center")
+    ws.merge_cells("G12:H12")
+    ws["G12"] = (f'=IF(COUNTA(B{hdr + 1}:B{last})=0,"No resources entered yet",'
                  f'IF(COUNTIF(H{hdr + 1}:H{last},"Check*")+(Guidance!D{op_row}="")+(Guidance!D{op_row + 2}="")'
                  f'+(Guidance!D{op_row + 3}="")=0,"READY TO SUBMIT",'
                  f'COUNTIF(H{hdr + 1}:H{last},"Check*")+(Guidance!D{op_row}="")+(Guidance!D{op_row + 2}="")'
                  f'+(Guidance!D{op_row + 3}="")&" item(s) to complete"))')
-    ws["G10"].font = font(12, True)
-    ws["G10"].alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[10].height = 24
-    for c in ("G10", "H10"):
+    ws["G12"].font = font(12, True)
+    ws["G12"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[12].height = 24
+    for c in ("G12", "H12"):
         ws[c].border = BOX
-    ws.conditional_formatting.add("G10:H10", FormulaRule(formula=['$G$10="READY TO SUBMIT"'],
+    ws.conditional_formatting.add("G12:H12", FormulaRule(formula=['$G$12="READY TO SUBMIT"'],
                                                          fill=fill("C6EFCE"), font=Font(color="006100", bold=True)))
-    ws.conditional_formatting.add("G10:H10", FormulaRule(formula=['ISNUMBER(SEARCH("to complete",$G$10))'],
+    ws.conditional_formatting.add("G12:H12", FormulaRule(formula=['ISNUMBER(SEARCH("to complete",$G$12))'],
                                                          fill=fill("FFC7CE"), font=Font(color="9C0006", bold=True)))
-    ws.merge_cells(start_row=12, start_column=1, end_row=12, end_column=len(cols))
-    ws.cell(12, 1, "Resources required for the operation (one row per resource and rank). Yellow = choose from "
+    ws.merge_cells(start_row=14, start_column=1, end_row=14, end_column=len(cols))
+    ws.cell(14, 1, "Resources required for the operation (one row per resource and rank). Yellow = choose from "
                    "list, white = type, grey = filled automatically.").font = font(10, italic=True, color="404040")
     # header
     for j, (name, _) in enumerate(cols, 1):
