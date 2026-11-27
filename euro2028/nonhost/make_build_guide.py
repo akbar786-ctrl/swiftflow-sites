@@ -53,14 +53,15 @@ def build(out=OUT):
     r.bold, r.font.size, r.font.color.rgb = True, Pt(18), NAVY
     para(doc, "For finishing your own Non-Host form in Excel. It assumes your current layout: Operation box D11, "
               "Force box beside 'Force:', From box D13, To box beside 'To:', and Table1 with headers in row 16 "
-              "(C Skill Portfolio, D Resource, E Rank, F Number of Officers, G Opportunity Cost, H Chargeable, "
-              "I Notes). Work through the parts in order and save after each one.", italic=True)
+              "(Skill Portfolio, Resource, Rank, Number of Officers, Opportunity Cost, Chargeable, Notes). "
+              "Part 3 removes Skill Portfolio, so the table becomes C Resource, D Rank, E Number of Officers, "
+              "F Opportunity Cost, G Chargeable Hours, H Notes, I Status. Work through the parts in order and save after each one.", italic=True)
 
     table(doc, ["Part", "What it does", "Time"], [
         ["1", "Lists tab for the drop-downs", "10 min"],
         ["2", "Names for the operation detail boxes", "5 min"],
-        ["3", "Table size, headers and Status column", "5 min"],
-        ["4", "Automatic formulas", "5 min"],
+        ["3", "Remove Skill Portfolio, resize table, add Status", "5 min"],
+        ["4", "Status formula", "5 min"],
         ["5", "Drop-downs and entry rules", "15 min"],
         ["6", "Red missing-cell highlighting", "10 min"],
         ["7", "Completion check box", "5 min"],
@@ -73,15 +74,15 @@ def build(out=OUT):
     part(doc, "Part 1 - Lists tab", "Holds the Resource and Rank lists the drop-downs read from.")
     steps(doc, [
         "Click the + next to the sheet tabs to add a sheet. Right-click it › Rename › type Lists.",
-        "Type the headings: A1 Skill Portfolio, B1 Skill, D1 Rank.",
-        "Paste the MA skills list from row 2: portfolio in column A, skill in column B (one skill per row, no blank "
-        "rows). Use Paste Special › Values if it comes from another file.",
-        "Type the ranks in D2 downwards: Assistant Chief Constable, Chief Superintendent, Superintendent, Chief "
+        "Type the headings: A1 Resource, C1 Rank.",
+        "Paste the resource (skills) list into column A from A2 - one per row, no blank rows. Use Paste Special › "
+        "Values if it comes from another file.",
+        "Type the ranks in C2 downwards: Assistant Chief Constable, Chief Superintendent, Superintendent, Chief "
         "Inspector, Inspector, Sergeant, Constable (add Detective ranks or Police Staff if you want them).",
-        "Formulas › Name Manager › New. Name: SkillList. Refers to:",
-        ("f", "=OFFSET(Lists!$B$2,0,0,COUNTA(Lists!$B:$B)-1,1)"),
+        "Formulas › Name Manager › New. Name: ResourceList. Refers to:",
+        ("f", "=OFFSET(Lists!$A$2,0,0,COUNTA(Lists!$A:$A)-1,1)"),
         "New again. Name: RankList. Refers to:",
-        ("f", "=OFFSET(Lists!$D$2,0,0,COUNTA(Lists!$D:$D)-1,1)"),
+        ("f", "=OFFSET(Lists!$C$2,0,0,COUNTA(Lists!$C:$C)-1,1)"),
         "Close Name Manager. (These grow automatically if you add to the lists, and drop-downs show no blank lines.)",
     ])
 
@@ -98,35 +99,35 @@ def build(out=OUT):
     ])
 
     # 3
-    part(doc, "Part 3 - Table size, headers and Status column")
+    part(doc, "Part 3 - Remove Skill Portfolio, resize the table, add Status")
     steps(doc, [
-        "Click J16 and type Status. The table extends to include it.",
-        "Click H16 and change the header to: Chargeable Hours (Hours per Officer) - so it matches the Host template "
+        "Right-click C16 (Skill Portfolio) › Delete › Table Columns. Only the table moves - Resource is now C, Rank "
+        "D, Officers E, Opportunity Cost F, Chargeable G, Notes H. The operation boxes above are not affected.",
+        "Click I16 and type Status. The table extends to include it.",
+        "Click G16 and change the header to: Chargeable Hours (Hours per Officer) - so it matches the Host template "
         "and the Guidance.",
-        "Click inside the table › Table Design › Resize Table › type =$C$16:$J$116 › OK. This gives 100 rows. "
+        "Click inside the table › Table Design › Resize Table › type =$C$16:$I$116 › OK. This gives 100 rows. "
         "(A protected sheet cannot grow the table, so make it big enough now.)",
     ])
 
     # 4
-    part(doc, "Part 4 - Automatic formulas",
-         "Type each in row 17 only - the table copies it down every row by itself.")
+    part(doc, "Part 4 - Status formula",
+         "Type it in row 17 only - the table copies it down every row by itself.")
     steps(doc, [
-        "C17 (Skill Portfolio - fills in from the Resource chosen):",
-        ("f", '=IF(D17="","",IFERROR(INDEX(Lists!$A:$A,MATCH(D17,Lists!$B:$B,0)),"Not on list"))'),
-        "J17 (Status - blank for an unused row, 'Check - missing' if any of D to H is empty, otherwise 'OK'):",
-        ("f", '=IF(COUNTA(D17:H17)=0,"",IF(COUNTBLANK(D17:H17)>0,"Check - missing","OK"))'),
+        "I17 (Status - blank for an unused row, 'Check - missing' if any of C to G is empty, otherwise 'OK'):",
+        ("f", '=IF(COUNTA(C17:G17)=0,"",IF(COUNTBLANK(C17:G17)>0,"Check - missing","OK"))'),
         "If a small 'AutoCorrect Options' icon appears, leave it - you want the column filled.",
-        "Shade C and J light grey (Home › Fill Color) so forces can see they are automatic.",
+        "Shade column I light grey (Home › Fill Color) so forces can see it is automatic.",
     ])
 
     # 5
     part(doc, "Part 5 - Drop-downs and entry rules", "All under Data › Data Validation. For each: select the "
                                                          "cells, set the Settings tab, then the Error Alert tab.")
     table(doc, ["Cells", "Allow / settings", "Error message"], [
-        ["D17:D116 Resource", "List. Source: =SkillList", "Choose a resource from the list."],
-        ["E17:E116 Rank", "List. Source: =RankList", "Choose a rank from the list."],
-        ["F17:F116 Officers", "Whole number, between 0 and 9999", "Enter a whole number of officers."],
-        ["G17:H116 Hours", "Decimal, between 0 and 24", "Hours per officer per day (0 to 24)."],
+        ["C17:C116 Resource", "List. Source: =ResourceList", "Choose a resource from the list."],
+        ["D17:D116 Rank", "List. Source: =RankList", "Choose a rank from the list."],
+        ["E17:E116 Officers", "Whole number, between 0 and 9999", "Enter a whole number of officers."],
+        ["F17:G116 Hours", "Decimal, between 0 and 24", "Hours per officer per day (0 to 24)."],
         ["OpStart (From)", "Date, between 01/01/2028 and 31/12/2028", "Enter a date, e.g. 14/06/2028."],
         ["OpEnd (To)", "Custom. Formula: =AND(ISNUMBER(OpEnd),OpEnd>=OpStart)",
          "Enter a date on or after the start date."],
@@ -134,35 +135,33 @@ def build(out=OUT):
     bullets(doc, [
         "Leave 'Ignore blank' ticked on all of them and Style: Stop.",
         "Format OpStart and OpEnd as dates: Home › Number Format › Short Date (dd/mm/yyyy).",
-        "Optional: on the Input Message tab of D17:D116 add 'Choose the resource from the list - the Skill Portfolio "
-        "fills in automatically.'",
+        "Optional: on the Input Message tab of C17:C116 add 'Choose the resource from the list.'",
     ])
 
     # 6
     part(doc, "Part 6 - Red missing-cell highlighting",
          "Same idea as the Host template: once any cell on a row is filled, the empty ones turn red.")
     steps(doc, [
-        "Click D17 first, then hold Shift and click H116 (D17 stays the active cell - check the Name Box shows D17).",
+        "Click C17 first, then hold Shift and click G116 (C17 stays the active cell - check the Name Box shows C17).",
         "Home › Conditional Formatting › New Rule › Use a formula. Type:",
-        ("f", "=AND(ISBLANK(D17),COUNTA($D17:$H17)>0)"),
+        ("f", "=AND(ISBLANK(C17),COUNTA($C17:$G17)>0)"),
         "Format › Fill › More Colors › Custom 255 / 199 / 206. Font › Bold, colour 156 / 0 / 6. OK, OK.",
-        "Click J17, Shift-click J116. New Rule › Use a formula: =LEFT(J17,5)=\"Check\" › same red format.",
-        "Same cells, another rule: =J17=\"OK\" › Fill 198 / 239 / 206, font colour 0 / 97 / 0, bold.",
-        "Click C17, Shift-click C116. New Rule: =C17=\"Not on list\" › font colour 156 / 0 / 6, bold.",
-        "Test: type a Resource on row 17 only - E to H should go red, Status should say 'Check - missing'.",
+        "Click I17, Shift-click I116. New Rule › Use a formula: =LEFT(I17,5)=\"Check\" › same red format.",
+        "Same cells, another rule: =I17=\"OK\" › Fill 198 / 239 / 206, font colour 0 / 97 / 0, bold.",
+        "Test: choose a Resource on row 17 only - D to G should go red, Status should say 'Check - missing'.",
     ])
 
     # 7
     part(doc, "Part 7 - Completion check box", "One cell that tells the force whether the form is ready to send.")
     steps(doc, [
-        "Pick a spare cell above the table, e.g. I13 (or any empty box). Type the label 'Completion check' in the "
+        "Pick a spare cell above the table, e.g. K14 (any empty cell outside the table). Type the label 'Completion check' in the "
         "cell above it.",
         "In the check cell type:",
         ("f", '=IF(COUNTA(Table1[Resource])=0,"No resources entered yet",IF(COUNTIF(Table1[Status],"Check*")'
               '+(OpName="")+(OpStart="")+(OpEnd="")=0,"READY TO SUBMIT",COUNTIF(Table1[Status],"Check*")'
               '+(OpName="")+(OpStart="")+(OpEnd="")&" item(s) to complete"))'),
-        "Conditional formatting on that cell: rule =ISNUMBER(SEARCH(\"to complete\",I13)) › red (as Part 6); rule "
-        "=I13=\"READY TO SUBMIT\" › green (as Part 6). Change I13 to the cell you used.",
+        "Conditional formatting on that cell: rule =ISNUMBER(SEARCH(\"to complete\",K14)) › red (as Part 6); rule "
+        "=K14=\"READY TO SUBMIT\" › green (as Part 6). Change K14 to the cell you used.",
     ])
     para(doc, "How it counts: each row marked 'Check - missing' is one item; a blank operation name, start date or end "
               "date is one item each. Table1[Status] means the whole Status column, so it keeps working if the table "
@@ -181,7 +180,7 @@ def build(out=OUT):
                       "on tournament resourcing."),
         ("Instructions for forces:", "1. On the Op Data Collection tab, complete the Operation name, Force, From and "
                                      "To dates.\n2. Use one row per resource and rank.\n3. Choose the Resource from "
-                                     "the drop-down; the Skill Portfolio fills in automatically.\n4. Choose the Rank, "
+                                     "the drop-down.\n4. Choose the Rank, "
                                      "then enter the Number of Officers, Opportunity Cost and Chargeable Hours.\n5. "
                                      "Hours are PER OFFICER PER DAY. Enter 0 if there are none - do not leave a cell "
                                      "blank.\n6. Red cells are missing. The Completion check must read READY TO "
@@ -210,9 +209,9 @@ def build(out=OUT):
     # 9
     part(doc, "Part 9 - Lock, protect and hide")
     steps(doc, [
-        "On Op Data Collection, select the input cells: the four operation detail boxes and D17:I116 (Ctrl+click to "
+        "On Op Data Collection, select the input cells: the four operation detail boxes and C17:H116 (Ctrl+click to "
         "add each area).",
-        "Right-click › Format Cells › Protection › untick Locked › OK. Everything else stays locked (C and J "
+        "Right-click › Format Cells › Protection › untick Locked › OK. Everything else stays locked (the Status "
         "formulas, headers, the check box).",
         "Review › Protect Sheet. Tick: Select locked cells, Select unlocked cells, Format columns, Use AutoFilter. "
         "A password is optional - if you set one, record it somewhere safe.",
@@ -225,11 +224,11 @@ def build(out=OUT):
     part(doc, "Part 10 - Test before sending")
     steps(doc, [
         "Leave the operation boxes empty: the check box should count the missing items.",
-        "Pick a Resource on row 17: Skill Portfolio fills in; E to H go red; Status says 'Check - missing'.",
+        "Pick a Resource on row 17: D to G go red; Status says 'Check - missing'.",
         "Fill the row (use 0 for no overtime): red clears, Status says OK.",
         "Type 25 in an hours cell: it should be refused. Type an end date before the start date: refused.",
         "Fill the operation boxes: the check box reads READY TO SUBMIT in green.",
-        "Clear all test entries (select D17:I116 › Delete, and the four boxes) and save.",
+        "Clear all test entries (select C17:H116 › Delete, and the four boxes) and save.",
     ])
 
     part(doc, "To confirm with the team")
